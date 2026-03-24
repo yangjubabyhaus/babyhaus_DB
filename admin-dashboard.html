@@ -120,7 +120,7 @@ body{font-family:'Gowun Dodum',sans-serif;background:var(--cream);color:var(--da
   background:var(--white);cursor:pointer;font-size:13px;font-family:'Gowun Dodum',sans-serif;
   color:var(--mid);transition:all .18s;display:flex;align-items:center;gap:6px;}
 .notif-btn.on{background:var(--sage-light);border-color:var(--sage);color:var(--sage-dark);cursor:default;}
-.stat-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-bottom:22px;}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:0;}
 .stat-card{background:var(--white);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);}
 .sc-icon{font-size:24px;margin-bottom:8px;}
 .sc-num{font-family:'Noto Serif KR',serif;font-size:28px;font-weight:700;}
@@ -129,7 +129,7 @@ body{font-family:'Gowun Dodum',sans-serif;background:var(--cream);color:var(--da
 .sc-warn .sc-num{color:var(--coral);}
 .sc-gold{background:var(--gold-light);}
 .sc-gold .sc-num{color:var(--gold);}
-.alert-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px;}
+.alert-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;margin-bottom:22px;}
 .card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;}
 .card.red-top{border-top:3px solid var(--coral);}
 .card.gold-top{border-top:3px solid var(--gold);}
@@ -257,11 +257,11 @@ tr:hover td{background:var(--cream);}
   .sidebar{display:none;}
   .main{margin-left:0;padding:14px 12px 90px;max-width:100vw;}
   .bottom-nav{display:block;}
-  .stat-grid{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+  .stat-grid{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0;}
   .stat-card{padding:14px;}
   .sc-num{font-size:22px;}
   .sc-icon{font-size:20px;margin-bottom:5px;}
-  .alert-grid{grid-template-columns:1fr;gap:12px;margin-bottom:16px;}
+  .alert-grid{grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;margin-bottom:16px;}
   .topbar{flex-direction:column;align-items:flex-start;margin-bottom:14px;gap:8px;}
   .page-title{font-size:18px;}
   .card{padding:14px;}
@@ -282,6 +282,7 @@ tr:hover td{background:var(--cream);}
 }
 @media(max-width:480px){
   .stat-grid{grid-template-columns:1fr 1fr;}
+  .alert-grid{grid-template-columns:1fr;}
   .main{padding:12px 10px 90px;}
 }
 
@@ -328,7 +329,7 @@ tr:hover td{background:var(--cream);}
 /* ===== CLICKABLE STAT CARDS ===== */
 .stat-clickable{cursor:pointer;transition:transform .18s, box-shadow .18s;}
 .stat-clickable:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(45,42,38,.13);}
-.stat-wide{grid-column:span 1;}
+.stat-wide{grid-column:1 / -1;}
 .sc-arrow{font-size:11px;color:var(--light);margin-top:6px;}
 .stat-clickable:hover .sc-arrow{color:var(--sage);}
 .sc-warn .sc-arrow{color:rgba(232,133,106,.6);}
@@ -547,11 +548,29 @@ async function getUpcoming(days){
 let _notifShown=new Set(JSON.parse(sessionStorage.getItem('n_shown')||'[]'));
 async function checkNotifications(){
   if(typeof Notification === 'undefined' || Notification.permission!=='granted') return;
+  // 선물 발송 알림
   (await getUpcoming(10)).forEach(({c,g,d})=>{
     const k=`${c.id}_${g.date}`;
-    if(!_notifShown.has(k)){_notifShown.add(k);sessionStorage.setItem('n_shown',JSON.stringify([..._notifShown]));
-      new Notification('🎁 선물 발송 알림 · 아이사랑',{body:`${c.name} · ${c.childName} · ${g.label}\n${d===0?'오늘 발송!':'D-'+d+' 예정'}`});}
+    if(!_notifShown.has(k)){
+      _notifShown.add(k);
+      sessionStorage.setItem('n_shown',JSON.stringify([..._notifShown]));
+      new Notification('🎁 선물 발송 알림 · BABY HAÜS',{body:`${c.name} · ${c.childName} · ${g.label}\n${d===0?'오늘 발송!':'D-'+d+' 예정'}`});
+    }
   });
+  // 신규 직원 가입 대기 알림 (마스터만)
+  const u=getCurrentUser();
+  if(u && can('manageUsers')){
+    const users=await getUsers();
+    const pending=users.filter(x=>!x.approved&&x.active);
+    pending.forEach(pu=>{
+      const k=`pending_${pu.id}`;
+      if(!_notifShown.has(k)){
+        _notifShown.add(k);
+        sessionStorage.setItem('n_shown',JSON.stringify([..._notifShown]));
+        new Notification('👤 신규 직원 가입 대기 · BABY HAÜS',{body:`@${pu.username} (${STORE_LABEL[pu.store]||pu.store}) 승인 대기 중입니다`});
+      }
+    });
+  }
 }
 function requestNotif(){
   Notification.requestPermission().then(p=>{if(p==='granted'){showToast('알림 활성화됐습니다','🔔');checkNotifications();renderApp();}else showToast('알림 권한이 거부됐습니다','❌');});
@@ -588,7 +607,25 @@ function goListWithFilter(storeFilter, typeFilter, urgencyFilter){
 function refreshTbl(){
   tblHTML().then(h=>{ const t=document.getElementById('tbl'); if(t) t.innerHTML=h; });
 }
-async function updateBadge(){const b=document.getElementById('alert-badge');if(b)b.textContent=(await getUpcoming(10)).length;}
+async function updateBadge(){
+  const b=document.getElementById('alert-badge');
+  if(b){
+    const n=(await getUpcoming(10)).length;
+    b.textContent=n;
+    b.style.display=n>0?'inline-block':'none';
+  }
+  // 직원 대기 뱃지
+  const users=await getUsers();
+  const pending=users.filter(u=>!u.approved&&u.active).length;
+  ['staff-badge','staff-badge-b'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.textContent=pending;el.style.display=pending>0?'inline-block':'none';}
+  });
+  // 대시보드 뱃지 하단 nav도 업데이트
+  const n2=(await getUpcoming(10)).length;
+  const ab=document.getElementById('alert-badge-b');
+  if(ab){ab.textContent=n2;ab.style.display=n2>0?'inline-block':'none';}
+}
 
 // ===== RENDER DISPATCHER =====
 function renderAuthOrApp(){
@@ -708,12 +745,16 @@ function renderApp(){
   document.getElementById('nav-items').innerHTML=items.map(i=>`
     <div class="ni ${i.id===curPage?'active':''}" onclick="go('${i.id}')" id="nav-${i.id}">
       <span class="ico">${i.icon}</span><span>${i.label}</span>
-      ${i.id==='dashboard'?`<span class="bdg" id="alert-badge">0</span>`:''}
+      ${i.id==='dashboard'?`<span class="bdg" id="alert-badge" style="display:none">0</span>`:''}
+      ${i.id==='staff'?`<span class="bdg" id="staff-badge" style="display:none;background:var(--gold)">0</span>`:''}
     </div>`).join('');
   // Bottom nav
   document.getElementById('bnav-row').innerHTML=items.map(i=>`
-    <div class="bni ${i.id===curPage?'active':''}" onclick="go('${i.id}')" id="bnav-${i.id}">
-      <span class="bi">${i.icon}</span><span class="bl">${i.label}</span>
+    <div class="bni ${i.id===curPage?'active':''}" onclick="go('${i.id}')" id="bnav-${i.id}" style="position:relative">
+      <span class="bi">${i.icon}</span>
+      ${i.id==='staff'?`<span id="staff-badge-b" style="display:none;position:absolute;top:4px;right:10px;background:var(--gold);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px">0</span>`:''}
+      ${i.id==='dashboard'?`<span id="alert-badge-b" style="display:none;position:absolute;top:4px;right:10px;background:var(--coral);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px">0</span>`:''}
+      <span class="bl">${i.label}</span>
     </div>`).join('')
     + `<div class="bni" onclick="showMobileMenu()">
       <span class="bi">⚙️</span><span class="bl">더보기</span>
