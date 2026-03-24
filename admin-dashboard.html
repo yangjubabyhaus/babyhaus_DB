@@ -310,7 +310,7 @@ const ROLE_LABEL = { master:'마스터', manager:'매니저', staff:'직원' };
 const STORE_LABEL = { dobong:'도봉점', yangju:'양주점', all:'전체' };
 const ROLE_CLS   = { master:'role-master', manager:'role-manager', staff:'role-staff' };
 const STORE_CLS  = { dobong:'store-dobong', yangju:'store-yangju', all:'store-all' };
-const DEFAULT_PWD = 'ansrlcjf4021';
+const DEFAULT_PWD = 'ansrlcjf4021!';
 
 // ===== UTIL =====
 function today(){ return new Date().toISOString().split('T')[0]; }
@@ -330,64 +330,91 @@ function roleBadge(r){ return `<span class="badge ${ROLE_CLS[r]||''}">${ROLE_LAB
 function storeBadge(s){ return `<span class="badge ${STORE_CLS[s]||''}">${STORE_LABEL[s]||s}</span>`; }
 
 // ===== USERS =====
-const USERS_VERSION = '2'; // 마스터 계정 변경 시 올려주세요
-function getUsers(){
+// ===== USERS (Supabase) =====
+const MASTER_ACCOUNTS = [
+  {id:'master_1', username:'master'},
+  {id:'master_2', username:'tommybaby'},
+  {id:'master_3', username:'yaguyagu'},
+];
+
+async function getUsers(){
   try{
-    const ver = localStorage.getItem('bss_users_ver');
-    if(ver !== USERS_VERSION){
-      // 버전 다르면 마스터 계정 재생성 (기존 직원 계정은 유지)
-      const existing = JSON.parse(localStorage.getItem('bss_users')||'[]');
-      const staff = existing.filter(u=>u.role!=='master');
-      const masters = seedMasters();
-      const merged = [...masters, ...staff];
-      saveUsers(merged);
-      localStorage.setItem('bss_users_ver', USERS_VERSION);
-      return merged;
+    const { data, error } = await _SB.from('users').select('*');
+    if(error){ console.error('getUsers:', error); return []; }
+    // 마스터 계정이 DB에 없으면 자동 생성
+    const list = data || [];
+    const missing = MASTER_ACCOUNTS.filter(m => !list.find(u => u.id === m.id));
+    if(missing.length > 0){
+      const newMasters = missing.map(m=>({
+        ...m, pwd:hashPwd(DEFAULT_PWD),
+        role:'master', store:'all', approved:true, active:true, createdAt:today()
+      }));
+      await _SB.from('users').upsert(newMasters, {onConflict:'id'});
+      return [...list, ...newMasters];
     }
-    const u=JSON.parse(localStorage.getItem('bss_users')||'null');
-    return u||seedMasters();
-  }
-  catch{ return seedMasters(); }
+    return list;
+  }catch(e){ console.error(e); return []; }
 }
-function saveUsers(u){ localStorage.setItem('bss_users',JSON.stringify(u)); }
-function seedMasters(){
-  const masters=[
-    {id:'master_1', username:'master'},
-    {id:'master_2', username:'tommybaby'},
-    {id:'master_3', username:'yaguyagu'},
-  ].map(m=>({...m, pwd:hashPwd(DEFAULT_PWD), role:'master', store:'all', approved:true, active:true, createdAt:today()}));
-  saveUsers(masters);
-  localStorage.setItem('bss_users_ver', USERS_VERSION);
-  return masters;
+async function saveUsers(arr){
+  try{
+    const { error } = await _SB.from('users').upsert(arr, {onConflict:'id'});
+    if(error) console.error('saveUsers:', error);
+  }catch(e){ console.error(e); }
+}
+async function saveOneUser(user){
+  try{
+    const { error } = await _SB.from('users').upsert([user], {onConflict:'id'});
+    if(error) console.error('saveOneUser:', error);
+  }catch(e){ console.error(e); }
+}
+async function deleteOneUser(id){
+  try{
+    const { error } = await _SB.from('users').delete().eq('id', id);
+    if(error) console.error('deleteOneUser:', error);
+  }catch(e){ console.error(e); }
 }
 
 // ===== AUTH =====
 function getCurrentUser(){
-  const id=sessionStorage.getItem('bss_uid'); if(!id)return null;
-  return getUsers().find(u=>u.id===id)||null;
+  // 세션 캐시에서 읽기 (동기 방식 유지)
+  const cached = sessionStorage.getItem('bss_user_cache');
+  if(cached){ try{ return JSON.parse(cached); }catch{} }
+  return null;
 }
-function doLogin(username,password){
-  const u=getUsers().find(x=>x.username===username&&x.pwd===hashPwd(password));
+async function refreshCurrentUser(){
+  const id = sessionStorage.getItem('bss_uid'); if(!id) return null;
+  const users = await getUsers();
+  const u = users.find(x=>x.id===id) || null;
+  if(u) sessionStorage.setItem('bss_user_cache', JSON.stringify(u));
+  return u;
+}
+async function doLogin(username,password){
+  const users = await getUsers();
+  const u=users.find(x=>x.username===username&&x.pwd===hashPwd(password));
   if(!u) return '아이디 또는 비밀번호가 올바르지 않습니다.';
   if(!u.approved) return '승인 대기 중입니다. 마스터에게 문의해주세요.';
   if(!u.active) return '비활성화된 계정입니다. 마스터에게 문의해주세요.';
-  sessionStorage.setItem('bss_uid',u.id); return null;
+  sessionStorage.setItem('bss_uid',u.id);
+  // 유저 정보를 세션에 캐시 (getUsers 반복 호출 줄이기)
+  sessionStorage.setItem('bss_user_cache', JSON.stringify(u));
+  return null;
 }
 function logout(){
   sessionStorage.removeItem('bss_uid');
   localStorage.removeItem('bss_saved_creds'); // 자동로그인 정보도 삭제
   location.reload();
 }
-function doRegister(username,password,pwdConfirm,store){
+async function doRegister(username,password,pwdConfirm,store){
   if(!username||username.length<3) return '아이디는 3자 이상이어야 합니다.';
   if(!/^[a-zA-Z0-9_]+$/.test(username)) return '아이디는 영문/숫자/밑줄만 사용 가능합니다.';
-  if(getUsers().find(u=>u.username===username)) return '이미 사용 중인 아이디입니다.';
+  const users = await getUsers();
+  if(users.find(u=>u.username===username)) return '이미 사용 중인 아이디입니다.';
   if(!password||password.length<6) return '비밀번호는 6자 이상이어야 합니다.';
   if(password!==pwdConfirm) return '비밀번호가 일치하지 않습니다.';
   if(!store) return '소속 매장을 선택해주세요.';
-  const users=getUsers();
-  users.push({id:'u_'+Date.now(),username,pwd:hashPwd(password),role:'staff',store,approved:false,active:true,createdAt:today()});
-  saveUsers(users); return null;
+  const newUser = {id:'u_'+Date.now(),username,pwd:hashPwd(password),role:'staff',store,approved:false,active:true,createdAt:today()};
+  await saveOneUser(newUser);
+  return null;
 }
 
 // ===== PERMISSIONS =====
@@ -514,22 +541,29 @@ function loginHTML(){
       <a onclick="devReset()" style="font-size:11px;color:rgba(255,255,255,.2);cursor:pointer">🔄 테스트 데이터 초기화</a>
     </div>`;
 }
-function devReset(){
+async function devReset(){
   if(!confirm('⚠️ 모든 사용자·고객 데이터를 초기화합니다.\n(마스터 계정만 남습니다)\n테스트 목적으로만 사용하세요.')) return;
-  ['bss_users','bss_users_ver','bss_saved_creds','baby_store_customers','n_shown'].forEach(k=>localStorage.removeItem(k));
+  // Supabase 데이터 삭제
+  await _SB.from('customers').delete().neq('id','__none__');
+  await _SB.from('users').delete().not('role','eq','master');
+  // 로컬 캐시 삭제
+  ['bss_saved_creds','n_shown'].forEach(k=>localStorage.removeItem(k));
   sessionStorage.clear();
   location.reload();
 }
 function getSavedCreds(){
   try{ return JSON.parse(localStorage.getItem('bss_saved_creds')||'{}'); }catch{ return {}; }
 }
-function doLoginBtn(){
+async function doLoginBtn(){
   const id=document.getElementById('l-id').value.trim();
   const pw=document.getElementById('l-pw').value;
   const remember=document.getElementById('l-remember')?.checked;
-  const err=doLogin(id,pw);
+  const btn=document.querySelector('.auth-btn');
+  if(btn){btn.textContent='로그인 중...';btn.disabled=true;}
+  const err=await doLogin(id,pw);
   if(err){
     const e=document.getElementById('auth-err'); e.style.display='block'; e.textContent=err;
+    if(btn){btn.textContent='로그인';btn.disabled=false;}
   } else {
     if(remember){
       localStorage.setItem('bss_saved_creds', JSON.stringify({username:id, password:pw}));
@@ -565,15 +599,19 @@ function selectRegStore(store){
   if(sd) sd.style.cssText = store==='dobong' ? active : inactive;
   if(sy) sy.style.cssText = store==='yangju' ? active : inactive;
 }
-function doRegBtn(){
-  const err=doRegister(
+async function doRegBtn(){
+  const btn=document.querySelector('.auth-btn.coral');
+  if(btn){btn.textContent='신청 중...';btn.disabled=true;}
+  const err=await doRegister(
     document.getElementById('r-id').value.trim(),
     document.getElementById('r-pw').value,
     document.getElementById('r-pw2').value,
     _regStore
   );
-  if(err){const e=document.getElementById('reg-err');e.style.display='block';e.textContent=err;}
-  else{_regStore='';renderAuth('success');}
+  if(err){
+    const e=document.getElementById('reg-err');e.style.display='block';e.textContent=err;
+    if(btn){btn.textContent='가입 신청';btn.disabled=false;}
+  } else {_regStore='';renderAuth('success');}
 }
 function successHTML(){
   return `<div class="auth-success">
@@ -614,7 +652,7 @@ async function renderPage(){
     mc.innerHTML=await renderList();
     tblHTML().then(h=>{ const t=document.getElementById('tbl'); if(t) t.innerHTML=h; });
   }
-  if(curPage==='staff') mc.innerHTML=renderStaff();
+  if(curPage==='staff'){ mc.innerHTML='<div style="text-align:center;padding:60px;color:var(--light);font-size:14px">불러오는 중...</div>'; renderStaff().then(h=>mc.innerHTML=h); }
   updateBadge();
 }
 
@@ -786,7 +824,7 @@ function showChangePwd(){
     </div>
   `);
 }
-function doChangePwd(){
+async function doChangePwd(){
   const u = getCurrentUser();
   const cur = document.getElementById('pw-cur').value;
   const nw  = document.getElementById('pw-new').value;
@@ -796,10 +834,12 @@ function doChangePwd(){
   if(hashPwd(cur) !== u.pwd){ showErr('현재 비밀번호가 올바르지 않습니다.'); return; }
   if(nw.length < 6){ showErr('새 비밀번호는 6자 이상이어야 합니다.'); return; }
   if(nw !== nw2){ showErr('새 비밀번호가 일치하지 않습니다.'); return; }
-  const users = getUsers();
+  const users = await getUsers();
   const target = users.find(x=>x.id===u.id);
   target.pwd = hashPwd(nw);
-  saveUsers(users);
+  await saveOneUser(target);
+  // 캐시 업데이트
+  sessionStorage.setItem('bss_user_cache', JSON.stringify(target));
   // 저장된 자격증명도 업데이트
   const saved = getSavedCreds();
   if(saved.username === u.username){
@@ -840,8 +880,8 @@ async function delCust(id){
 }
 
 // ===== STAFF MANAGEMENT =====
-function renderStaff(){
-  const users=getUsers();
+async function renderStaff(){
+  const users=await getUsers();
   const pending=users.filter(u=>!u.approved&&u.active);
   const active=users.filter(u=>u.approved&&u.active&&u.role!=='master');
   function pendRow(u){
@@ -887,9 +927,10 @@ function renderStaff(){
 }
 
 let _approveId='', _approveRole='staff', _approveStore='';
-function showApproveModal(uid){
+async function showApproveModal(uid){
   _approveId=uid;_approveRole='staff';
-  const u=getUsers().find(x=>x.id===uid); if(!u)return;
+  const users=await getUsers();
+  const u=users.find(x=>x.id===uid); if(!u)return;
   _approveStore=u.store||'dobong';
   renderApproveModal();
 }
@@ -920,11 +961,12 @@ function renderApproveModal(){
       <button class="btn btn-primary" onclick="doApprove()">승인 완료</button>
     </div>`);
 }
-function doApprove(){
+async function doApprove(){
   if(_approveRole==='staff'&&!_approveStore){showToast('매장을 선택해주세요','⚠️');return;}
-  const users=getUsers(),u=users.find(x=>x.id===_approveId); if(!u)return;
+  const users=await getUsers(),u=users.find(x=>x.id===_approveId); if(!u)return;
   u.approved=true;u.role=_approveRole;u.store=_approveRole==='manager'?'all':_approveStore;
-  saveUsers(users);document.getElementById('overlay').style.display='none';
+  await saveOneUser(u);
+  document.getElementById('overlay').style.display='none';
   showToast(`@${u.username} 승인 완료!`,'✅');renderPage();
 }
 function rejectUser(uid,username){
@@ -936,14 +978,15 @@ function rejectUser(uid,username){
       <button class="btn btn-coral" onclick="doReject('${uid}')">거절 확인</button>
     </div>`);
 }
-function doReject(uid){
-  let users=getUsers();users=users.filter(u=>u.id!==uid);saveUsers(users);
+async function doReject(uid){
+  await deleteOneUser(uid);
   document.getElementById('overlay').style.display='none';showToast('가입이 거절됐습니다','✗');renderPage();
 }
 
 let _updId='', _updRole='', _updStore='';
-function showUpdateModal(uid){
-  const u=getUsers().find(x=>x.id===uid); if(!u)return;
+async function showUpdateModal(uid){
+  const users=await getUsers();
+  const u=users.find(x=>x.id===uid); if(!u)return;
   _updId=uid;_updRole=u.role;_updStore=u.store;
   renderUpdateModal();
 }
@@ -972,10 +1015,11 @@ function renderUpdateModal(){
       <button class="btn btn-primary" onclick="doUpdate()">변경 완료</button>
     </div>`);
 }
-function doUpdate(){
-  const users=getUsers(),u=users.find(x=>x.id===_updId); if(!u)return;
+async function doUpdate(){
+  const users=await getUsers(),u=users.find(x=>x.id===_updId); if(!u)return;
   u.role=_updRole;u.store=_updRole==='manager'?'all':_updStore;
-  saveUsers(users);document.getElementById('overlay').style.display='none';
+  await saveOneUser(u);
+  document.getElementById('overlay').style.display='none';
   showToast(`@${u.username} 권한이 변경됐습니다`,'✅');renderPage();
 }
 function deactivateUser(uid,username){
@@ -987,9 +1031,10 @@ function deactivateUser(uid,username){
       <button class="btn btn-coral" onclick="doDeactivate('${uid}')">비활성화</button>
     </div>`);
 }
-function doDeactivate(uid){
-  const users=getUsers(),u=users.find(x=>x.id===uid); if(!u)return;
-  u.active=false;saveUsers(users);
+async function doDeactivate(uid){
+  const users=await getUsers(),u=users.find(x=>x.id===uid); if(!u)return;
+  u.active=false;
+  await saveOneUser(u);
   document.getElementById('overlay').style.display='none';
   showToast('계정이 비활성화됐습니다','🚫');renderPage();
 }
@@ -1026,22 +1071,21 @@ async function autoCleanup(){
 }
 
 // ===== INIT =====
-getUsers(); // seed masters if first run
-autoCleanup();  // async, runs in background
+getUsers(); // 마스터 계정 자동 생성 (비동기, 백그라운드)
+autoCleanup(); // 72개월 자동 삭제 (비동기, 백그라운드)
 
 // 저장된 로그인 정보로 자동 로그인 시도
-(function autoLogin(){
+(async function autoLogin(){
   const saved = getSavedCreds();
   if(saved.username && saved.password && !getCurrentUser()){
-    const err = doLogin(saved.username, saved.password);
+    const err = await doLogin(saved.username, saved.password);
     if(err){
-      // 저장 정보가 더 이상 유효하지 않으면 삭제
       localStorage.removeItem('bss_saved_creds');
     }
   }
+  renderAuthOrApp();
 })();
-
-renderAuthOrApp();
+// renderAuthOrApp() is called inside autoLogin above
 setTimeout(checkNotifications,2000);
 setInterval(()=>{updateBadge();checkNotifications();},600000);
 setInterval(autoCleanup,3600000);
