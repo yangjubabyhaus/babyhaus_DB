@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="BABY HAÜS 관리"/>
+<meta name="theme-color" content="#2d2a26"/>
+<link rel="manifest" href="manifest.json"/>
+<title>BABY HAÜS 관리자</title>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --cream:#fdf8f2;--cream2:#f5ede0;
+  --sage:#7aab8a;--sage-light:#e8f2eb;--sage-dark:#558a68;
+  --coral:#e8856a;--coral-light:#fdeee9;
+  --gold:#c9a84c;--gold-light:#fdf6e3;
+  --dark:#2d2a26;--mid:#7a7268;--light:#b8b0a4;--white:#fff;
+  --shadow:0 2px 12px rgba(45,42,38,.08);--shadow-lg:0 8px 32px rgba(45,42,38,.14);
+  --radius:14px;--radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Gowun Dodum',sans-serif;background:var(--cream);color:var(--dark);min-height:100vh;}
+
+/* ===== AUTH SCREEN ===== */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(160deg,#1a1714 0%,#2d2a26 60%,#3a3530 100%);
+  padding:20px;}
+.auth-card{width:100%;max-width:400px;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.10);border-radius:24px;
+  padding:36px 28px;backdrop-filter:blur(10px);}
+.auth-logo{text-align:center;margin-bottom:28px;}
+.auth-logo .al-icon{font-size:52px;}
+.auth-logo .al-name{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:700;color:#fff;margin-top:8px;}
+.auth-logo .al-sub{font-size:12px;color:rgba(255,255,255,.45);margin-top:4px;}
+.auth-title{font-size:16px;font-weight:700;color:#fff;margin-bottom:20px;}
+.auth-input{width:100%;padding:13px 15px;border:1.5px solid rgba(255,255,255,.15);border-radius:var(--radius-sm);
+  font-size:15px;font-family:'Gowun Dodum',sans-serif;color:#fff;
+  background:rgba(255,255,255,.07);outline:none;transition:border-color .18s;margin-bottom:12px;}
+.auth-input:focus{border-color:var(--sage);}
+.auth-input::placeholder{color:rgba(255,255,255,.3);}
+.auth-err{background:rgba(232,133,106,.15);border:1px solid rgba(232,133,106,.4);
+  border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:#f4a58a;margin-bottom:12px;}
+.auth-btn{width:100%;padding:14px;border:none;border-radius:var(--radius-sm);cursor:pointer;
+  font-size:15px;font-weight:700;font-family:'Gowun Dodum',sans-serif;
+  background:linear-gradient(135deg,var(--sage),var(--sage-dark));color:#fff;
+  box-shadow:0 4px 16px rgba(122,171,138,.3);transition:all .18s;margin-top:4px;}
+.auth-btn:hover{transform:translateY(-1px);}
+.auth-btn.coral{background:linear-gradient(135deg,var(--coral),#d4704f);}
+.auth-link{text-align:center;margin-top:18px;font-size:13px;color:rgba(255,255,255,.4);}
+.auth-link a{color:var(--sage);cursor:pointer;text-decoration:none;}
+.auth-link a:hover{text-decoration:underline;}
+.auth-setup{background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.25);
+  border-radius:var(--radius-sm);padding:12px 14px;font-size:12px;color:rgba(201,168,76,.8);
+  margin-top:16px;line-height:1.7;}
+.auth-success{text-align:center;padding:20px 0;}
+.auth-success .as-icon{font-size:48px;margin-bottom:14px;}
+.auth-success .as-title{font-family:'Noto Serif KR',serif;font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;}
+.auth-success .as-sub{font-size:13px;color:rgba(255,255,255,.5);line-height:1.7;}
+.store-radio-row{display:flex;gap:12px;margin-bottom:12px;}
+.store-radio{flex:1;padding:12px;border:1.5px solid rgba(255,255,255,.15);border-radius:var(--radius-sm);
+  cursor:pointer;text-align:center;font-size:14px;color:rgba(255,255,255,.6);transition:all .18s;}
+.store-radio.active{border-color:var(--sage);background:rgba(122,171,138,.15);color:#fff;}
+
+/* ===== APP SHELL ===== */
+.app{display:flex;min-height:100vh;}
+.sidebar{width:220px;min-height:100vh;background:var(--dark);
+  display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;}
+.sb-logo{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+.sb-logo .li{font-size:24px;}
+.sb-logo .lt{font-family:'Noto Serif KR',serif;font-size:13px;font-weight:700;color:#fff;margin-top:5px;line-height:1.4;}
+.sb-user{margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;}
+.nav-sec{padding:14px 10px;flex:1;}
+.nav-lbl{font-size:10px;letter-spacing:1.5px;color:var(--light);padding:0 10px;margin-bottom:6px;text-transform:uppercase;}
+.ni{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;
+  cursor:pointer;color:rgba(255,255,255,.6);font-size:14px;transition:all .18s;margin-bottom:2px;}
+.ni:hover{background:rgba(255,255,255,.07);color:#fff;}
+.ni.active{background:var(--sage);color:#fff;}
+.ni .ico{font-size:16px;width:20px;text-align:center;}
+.ni .bdg{margin-left:auto;background:var(--coral);color:#fff;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;}
+.sb-bottom{padding:14px 12px;border-top:1px solid rgba(255,255,255,.08);}
+.logout-btn{width:100%;padding:10px;border:1px solid rgba(255,255,255,.15);border-radius:var(--radius-sm);
+  background:transparent;color:rgba(255,255,255,.5);cursor:pointer;font-size:13px;
+  font-family:'Gowun Dodum',sans-serif;transition:all .18s;}
+.logout-btn:hover{background:rgba(255,255,255,.07);color:#fff;}
+.main{margin-left:220px;flex:1;padding:26px;padding-bottom:40px;max-width:calc(100vw - 220px);}
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;
+  background:var(--dark);z-index:100;border-top:1px solid rgba(255,255,255,.08);padding:4px 0 8px;}
+.bnav-row{display:flex;}
+.bni{flex:1;text-align:center;color:rgba(255,255,255,.5);padding:8px 4px 4px;cursor:pointer;border-radius:8px;transition:all .18s;}
+.bni.active{color:var(--sage);}
+.bni .bi{font-size:20px;display:block;margin-bottom:2px;}
+.bni .bl{font-size:10px;}
+
+/* ===== BADGES ===== */
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+.role-master{background:#fdeee9;color:var(--coral);}
+.role-manager{background:var(--gold-light);color:#856404;}
+.role-staff{background:var(--sage-light);color:var(--sage-dark);}
+.store-dobong{background:#e8f0fe;color:#3b5bdb;}
+.store-yangju{background:#f3e8ff;color:#7048e8;}
+.store-all{background:var(--cream2);color:var(--mid);}
+.bp{background:var(--coral-light);color:var(--coral);}
+.bn{background:var(--sage-light);color:var(--sage-dark);}
+.bs{background:#fff3cd;color:#856404;}
+
+/* ===== PAGE ===== */
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px;}
+.page-title{font-family:'Noto Serif KR',serif;font-size:22px;font-weight:700;}
+.page-sub{font-size:13px;color:var(--mid);margin-top:3px;}
+.notif-btn{padding:9px 16px;border:2px solid #e8e0d5;border-radius:var(--radius-sm);
+  background:var(--white);cursor:pointer;font-size:13px;font-family:'Gowun Dodum',sans-serif;
+  color:var(--mid);transition:all .18s;display:flex;align-items:center;gap:6px;}
+.notif-btn.on{background:var(--sage-light);border-color:var(--sage);color:var(--sage-dark);cursor:default;}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+.stat-card{background:var(--white);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);}
+.sc-icon{font-size:24px;margin-bottom:8px;}
+.sc-num{font-family:'Noto Serif KR',serif;font-size:28px;font-weight:700;}
+.sc-lbl{font-size:12px;color:var(--mid);margin-top:2px;}
+.sc-warn{background:var(--coral-light);}
+.sc-warn .sc-num{color:var(--coral);}
+.sc-gold{background:var(--gold-light);}
+.sc-gold .sc-num{color:var(--gold);}
+.alert-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px;}
+.card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;}
+.card.red-top{border-top:3px solid var(--coral);}
+.card.gold-top{border-top:3px solid var(--gold);}
+.sec-title{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:600;
+  color:var(--dark);margin-bottom:14px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.sec-sub{font-size:11px;font-weight:400;color:var(--mid);}
+.ai{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:var(--radius-sm);
+  background:var(--cream);margin-bottom:7px;cursor:pointer;transition:background .15s;}
+.ai:hover{background:var(--sage-light);}
+.ai-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.av-p{background:var(--coral-light);}
+.av-n{background:var(--sage-light);}
+.ai-info{flex:1;min-width:0;}
+.ai-name{font-weight:600;font-size:13px;}
+.ai-detail{font-size:11px;color:var(--mid);margin-top:2px;line-height:1.5;}
+.dday{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;}
+.dd-red{background:var(--coral);color:#fff;}
+.dd-gold{background:var(--gold);color:#fff;}
+.dd-green{background:var(--sage-light);color:var(--sage-dark);}
+.empty{text-align:center;padding:28px 16px;color:var(--light);font-size:13px;}
+.notif-banner{background:var(--gold-light);border:1.5px solid var(--gold);border-radius:var(--radius-sm);
+  padding:12px 16px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;font-size:13px;color:#7a5c00;flex-wrap:wrap;}
+.notif-banner button{padding:7px 14px;background:var(--gold);color:#fff;border:none;
+  border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;font-family:'Gowun Dodum',sans-serif;}
+
+/* ===== TABLE ===== */
+.search-bar{display:flex;gap:9px;margin-bottom:14px;flex-wrap:wrap;}
+.si{flex:1;min-width:140px;padding:9px 13px 9px 34px;border:1.5px solid #e8e0d5;
+  border-radius:var(--radius-sm);font-size:13px;font-family:'Gowun Dodum',sans-serif;
+  background:var(--cream) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23b8b0a4' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") 10px center no-repeat;outline:none;}
+.si:focus{border-color:var(--sage);}
+.fsel{padding:9px 10px;border:1.5px solid #e8e0d5;border-radius:var(--radius-sm);
+  font-size:13px;font-family:'Gowun Dodum',sans-serif;background:var(--cream);outline:none;cursor:pointer;}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;padding:11px 12px;font-size:11px;color:var(--mid);
+  border-bottom:2px solid var(--cream2);white-space:nowrap;}
+td{padding:12px 12px;border-bottom:1px solid var(--cream2);vertical-align:middle;}
+tr:hover td{background:var(--cream);}
+
+/* ===== BUTTONS ===== */
+.btn{padding:8px 16px;border-radius:var(--radius-sm);border:none;cursor:pointer;
+  font-size:13px;font-weight:600;font-family:'Gowun Dodum',sans-serif;transition:all .18s;}
+.btn-primary{background:var(--sage);color:#fff;}
+.btn-primary:hover{background:var(--sage-dark);}
+.btn-secondary{background:var(--cream2);color:var(--dark);}
+.btn-secondary:hover{background:#e8ddd0;}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.btn-coral{background:var(--coral);color:#fff;}
+.btn-coral:hover{background:#d4704f;}
+.btn-danger{background:var(--coral-light);color:var(--coral);}
+.btn-gold{background:var(--gold);color:#fff;}
+.btn-dobong{background:#e8f0fe;color:#3b5bdb;}
+.btn-yangju{background:#f3e8ff;color:#7048e8;}
+
+/* ===== MODAL ===== */
+.overlay{position:fixed;inset:0;background:rgba(45,42,38,.45);z-index:200;
+  display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px);}
+.modal{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-lg);
+  width:100%;max-width:520px;max-height:90vh;overflow-y:auto;padding:26px;}
+.modal-title{font-family:'Noto Serif KR',serif;font-size:18px;font-weight:700;
+  margin-bottom:16px;display:flex;align-items:center;gap:9px;}
+.modal-footer{display:flex;gap:9px;justify-content:flex-end;margin-top:18px;
+  padding-top:16px;border-top:1px solid var(--cream2);}
+.dr{display:flex;padding:9px 0;border-bottom:1px solid var(--cream2);font-size:13px;}
+.dr:last-child{border-bottom:none;}
+.dk{width:115px;color:var(--mid);flex-shrink:0;}
+.dv{font-weight:600;color:var(--dark);flex:1;}
+.gift-tl{display:flex;flex-direction:column;position:relative;padding-left:20px;}
+.gift-tl::before{content:'';position:absolute;left:5px;top:8px;bottom:8px;width:2px;background:var(--cream2);}
+.gs{position:relative;padding:8px 0 8px 16px;font-size:12px;}
+.gs::before{content:'';position:absolute;left:-15px;top:12px;width:10px;height:10px;
+  border-radius:50%;border:2px solid var(--cream2);background:var(--white);}
+.gs.done::before{background:var(--sage);border-color:var(--sage);}
+.gs.upcom::before{background:var(--coral);border-color:var(--coral);}
+.gs-date{font-weight:600;color:var(--dark);}
+.gs-lbl{color:var(--mid);margin-top:1px;}
+.code-box{background:var(--dark);color:var(--gold);font-family:monospace;font-size:18px;
+  letter-spacing:4px;text-align:center;padding:12px;border-radius:var(--radius-sm);margin:9px 0;font-weight:700;}
+.info-box{background:var(--sage-light);border-left:3px solid var(--sage);
+  border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:11px 14px;
+  font-size:13px;color:var(--sage-dark);margin:12px 0;line-height:1.6;}
+.modal-form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:13px;}
+.modal-label{font-size:12px;font-weight:600;color:var(--dark);}
+.modal-input{padding:10px 13px;border:1.5px solid #e8e0d5;border-radius:var(--radius-sm);
+  font-size:14px;font-family:'Gowun Dodum',sans-serif;color:var(--dark);
+  background:var(--cream);outline:none;transition:border-color .15s;}
+.modal-input:focus{border-color:var(--sage);background:#fff;}
+
+/* ===== STAFF MGMT ===== */
+.pending-card{background:var(--coral-light);border-radius:var(--radius);padding:18px;margin-bottom:20px;}
+.pending-card .sec-title{color:var(--coral);}
+.role-select-row{display:flex;gap:10px;margin:12px 0;}
+.role-opt{flex:1;padding:12px 8px;border:2px solid var(--cream2);border-radius:var(--radius-sm);
+  cursor:pointer;text-align:center;font-size:13px;transition:all .18s;}
+.role-opt:hover{border-color:var(--light);}
+.role-opt.sel-master{border-color:var(--coral);background:var(--coral-light);}
+.role-opt.sel-manager{border-color:var(--gold);background:var(--gold-light);}
+.role-opt.sel-staff{border-color:var(--sage);background:var(--sage-light);}
+.ro-icon{font-size:22px;margin-bottom:5px;}
+.ro-name{font-weight:700;font-size:13px;color:var(--dark);}
+.ro-desc{font-size:11px;color:var(--mid);margin-top:3px;line-height:1.4;}
+.store-opt-row{display:flex;gap:10px;margin:10px 0;}
+.store-opt{flex:1;padding:10px;border:2px solid var(--cream2);border-radius:var(--radius-sm);
+  cursor:pointer;text-align:center;font-size:13px;font-weight:600;transition:all .18s;}
+.store-opt:hover{border-color:var(--light);}
+.store-opt.sel-dobong{border-color:#3b5bdb;background:#e8f0fe;color:#3b5bdb;}
+.store-opt.sel-yangju{border-color:#7048e8;background:#f3e8ff;color:#7048e8;}
+
+/* ===== QR ===== */
+.qr-wrap{text-align:center;padding:16px 0;}
+#qrcode{display:inline-block;padding:16px;background:#fff;border-radius:12px;box-shadow:var(--shadow);margin:14px 0;}
+.qr-url-box{background:var(--cream2);border-radius:var(--radius-sm);padding:10px 14px;
+  font-size:12px;font-family:monospace;color:var(--mid);word-break:break-all;margin:10px 0;text-align:left;}
+
+/* ===== TOAST ===== */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--dark);color:#fff;
+  padding:12px 20px;border-radius:10px;font-size:13px;box-shadow:var(--shadow-lg);
+  z-index:999;display:flex;align-items:center;gap:8px;animation:su .3s ease;}
+@keyframes su{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .main{margin-left:0;padding:16px 14px 100px;max-width:100vw;}
+  .bottom-nav{display:block;}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+  .alert-grid{grid-template-columns:1fr;}
+  .topbar{flex-direction:column;align-items:flex-start;}
+}
+@media(max-width:480px){.stat-grid{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+
+<!-- ===== AUTH ===== -->
+<div id="auth-wrap" class="auth-wrap" style="display:none">
+  <div class="auth-card">
+    <div class="auth-logo">
+      
+      <div class="al-name">BABY HAÜS</div>
+      <div class="al-sub">관리자 시스템</div>
+    </div>
+    <div id="auth-inner"></div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app-wrap" class="app" style="display:none">
+  <nav class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      
+      <div class="lt">BABY HAÜS</div>
+      <div class="sb-user" id="sb-user"></div>
+    </div>
+    <div class="nav-sec" id="nav-sec">
+      <div class="nav-lbl">메뉴</div>
+      <div id="nav-items"></div>
+    </div>
+    <div class="sb-bottom">
+      <button class="logout-btn" onclick="showChangePwd()" style="margin-bottom:8px;color:rgba(255,255,255,.6)">🔑 비밀번호 변경</button>
+      <button class="logout-btn" onclick="logout()">🚪 로그아웃</button>
+    </div>
+  </nav>
+  <div class="main" id="main"></div>
+  <nav class="bottom-nav">
+    <div class="bnav-row" id="bnav-row"></div>
+  </nav>
+</div>
+
+<div class="overlay" id="overlay" style="display:none" onclick="closeOverlay(event)">
+  <div class="modal" id="modal"></div>
+</div>
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+// ===== CONSTANTS =====
+const ROLE_LABEL = { master:'마스터', manager:'매니저', staff:'직원' };
+const STORE_LABEL = { dobong:'도봉점', yangju:'양주점', all:'전체' };
+const ROLE_CLS   = { master:'role-master', manager:'role-manager', staff:'role-staff' };
+const STORE_CLS  = { dobong:'store-dobong', yangju:'store-yangju', all:'store-all' };
+const DEFAULT_PWD = 'ansrlcjf4021';
+
+// ===== UTIL =====
+function today(){ return new Date().toISOString().split('T')[0]; }
+function fmtDate(s){ if(!s)return'-'; const d=new Date(s); return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`; }
+function daysUntil(s){ if(!s)return null; const t=new Date(); t.setHours(0,0,0,0); return Math.round((new Date(s)-t)/86400000); }
+function effDate(c){ return c.type==='pregnant'?(c.actualBirthDate||c.dueDate):c.birthDate; }
+// 실제 출산일이 등록되었으면 표시상 '일반'으로 취급
+function effType(c){ return (c.type==='pregnant' && c.actualBirthDate) ? 'normal' : c.type; }
+function hashPwd(s){ let h=0; for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;} return Math.abs(h).toString(16).padStart(8,'0'); }
+function showToast(msg,icon='✅'){
+  const t=document.getElementById('toast'); t.innerHTML=`${icon} ${msg}`; t.style.display='flex';
+  clearTimeout(window._tt); window._tt=setTimeout(()=>t.style.display='none',2800);
+}
+function closeOverlay(e){ if(e.target===document.getElementById('overlay')) document.getElementById('overlay').style.display='none'; }
+function openModal(html){ document.getElementById('modal').innerHTML=html; document.getElementById('overlay').style.display='flex'; }
+function roleBadge(r){ return `<span class="badge ${ROLE_CLS[r]||''}">${ROLE_LABEL[r]||r}</span>`; }
+function storeBadge(s){ return `<span class="badge ${STORE_CLS[s]||''}">${STORE_LABEL[s]||s}</span>`; }
+
+// ===== USERS =====
+const USERS_VERSION = '2'; // 마스터 계정 변경 시 올려주세요
+function getUsers(){
+  try{
+    const ver = localStorage.getItem('bss_users_ver');
+    if(ver !== USERS_VERSION){
+      // 버전 다르면 마스터 계정 재생성 (기존 직원 계정은 유지)
+      const existing = JSON.parse(localStorage.getItem('bss_users')||'[]');
+      const staff = existing.filter(u=>u.role!=='master');
+      const masters = seedMasters();
+      const merged = [...masters, ...staff];
+      saveUsers(merged);
+      localStorage.setItem('bss_users_ver', USERS_VERSION);
+      return merged;
+    }
+    const u=JSON.parse(localStorage.getItem('bss_users')||'null');
+    return u||seedMasters();
+  }
+  catch{ return seedMasters(); }
+}
+function saveUsers(u){ localStorage.setItem('bss_users',JSON.stringify(u)); }
+function seedMasters(){
+  const masters=[
+    {id:'master_1', username:'master'},
+    {id:'master_2', username:'tommybaby'},
+    {id:'master_3', username:'yaguyagu'},
+  ].map(m=>({...m, pwd:hashPwd(DEFAULT_PWD), role:'master', store:'all', approved:true, active:true, createdAt:today()}));
+  saveUsers(masters);
+  localStorage.setItem('bss_users_ver', USERS_VERSION);
+  return masters;
+}
+
+// ===== AUTH =====
+function getCurrentUser(){
+  const id=sessionStorage.getItem('bss_uid'); if(!id)return null;
+  return getUsers().find(u=>u.id===id)||null;
+}
+function doLogin(username,password){
+  const u=getUsers().find(x=>x.username===username&&x.pwd===hashPwd(password));
+  if(!u) return '아이디 또는 비밀번호가 올바르지 않습니다.';
+  if(!u.approved) return '승인 대기 중입니다. 마스터에게 문의해주세요.';
+  if(!u.active) return '비활성화된 계정입니다. 마스터에게 문의해주세요.';
+  sessionStorage.setItem('bss_uid',u.id); return null;
+}
+function logout(){
+  sessionStorage.removeItem('bss_uid');
+  localStorage.removeItem('bss_saved_creds'); // 자동로그인 정보도 삭제
+  location.reload();
+}
+function doRegister(username,password,pwdConfirm,store){
+  if(!username||username.length<3) return '아이디는 3자 이상이어야 합니다.';
+  if(!/^[a-zA-Z0-9_]+$/.test(username)) return '아이디는 영문/숫자/밑줄만 사용 가능합니다.';
+  if(getUsers().find(u=>u.username===username)) return '이미 사용 중인 아이디입니다.';
+  if(!password||password.length<6) return '비밀번호는 6자 이상이어야 합니다.';
+  if(password!==pwdConfirm) return '비밀번호가 일치하지 않습니다.';
+  if(!store) return '소속 매장을 선택해주세요.';
+  const users=getUsers();
+  users.push({id:'u_'+Date.now(),username,pwd:hashPwd(password),role:'staff',store,approved:false,active:true,createdAt:today()});
+  saveUsers(users); return null;
+}
+
+// ===== PERMISSIONS =====
+function can(action){
+  const u=getCurrentUser(); if(!u)return false;
+  const p={viewAll:['master','manager'],markSent:['master','manager'],deleteCust:['master'],manageUsers:['master']};
+  return (p[action]||[]).includes(u.role);
+}
+
+// ===== DATA =====
+function getAllCusts(){ try{return JSON.parse(localStorage.getItem('baby_store_customers')||'[]');}catch{return[];} }
+function saveCust(arr){ localStorage.setItem('baby_store_customers',JSON.stringify(arr)); }
+function getCust(){
+  const u=getCurrentUser(); if(!u)return[];
+  const all=getAllCusts().filter(c=>!c.deleted);
+  if(can('viewAll')) return all;
+  return all.filter(c=>c.store===u.store);
+}
+function buildGifts(c){
+  const base=effDate(c); if(!base)return[];
+  const d=new Date(base),g=[];
+  if(c.type==='pregnant') g.push({label:'출산 축하 선물 🎀',date:base,sent:false});
+  for(let y=1;y<=3;y++){const nd=new Date(d);nd.setFullYear(nd.getFullYear()+y);g.push({label:y===3?'세 번째 생일 선물 🎂 (36개월)':`${['첫','두','세'][y-1]} 번째 생일 선물 🎁`,date:nd.toISOString().split('T')[0],sent:false});}
+  return g;
+}
+function getGifts(c){ return(c.gifts&&c.gifts.length)?c.gifts:buildGifts(c).map(g=>({...g,sent:false})); }
+function getUpcoming(days){
+  const r=[];
+  getCust().forEach(c=>getGifts(c).forEach(g=>{const d=daysUntil(g.date);if(d!==null&&d>=0&&d<=days&&!g.sent)r.push({c,g,d});}));
+  return r.sort((a,b)=>a.d-b.d);
+}
+
+// ===== NOTIFICATIONS =====
+let _notifShown=new Set(JSON.parse(sessionStorage.getItem('n_shown')||'[]'));
+function checkNotifications(){
+  if(Notification.permission!=='granted')return;
+  getUpcoming(10).forEach(({c,g,d})=>{
+    const k=`${c.id}_${g.date}`;
+    if(!_notifShown.has(k)){_notifShown.add(k);sessionStorage.setItem('n_shown',JSON.stringify([..._notifShown]));
+      new Notification('🎁 선물 발송 알림 · 아이사랑',{body:`${c.name} · ${c.childName} · ${g.label}\n${d===0?'오늘 발송!':'D-'+d+' 예정'}`});}
+  });
+}
+function requestNotif(){
+  Notification.requestPermission().then(p=>{if(p==='granted'){showToast('알림 활성화됐습니다','🔔');checkNotifications();renderApp();}else showToast('알림 권한이 거부됐습니다','❌');});
+}
+
+// ===== NAV =====
+let curPage='dashboard', sq='', sf='all', tf='all';
+function getNavItems(){
+  const u=getCurrentUser(); if(!u)return[];
+  return [
+    {id:'dashboard',icon:'🏠',label:'대시보드'},
+    {id:'list',     icon:'👥',label:'고객 목록'},
+
+    ...(can('manageUsers')?[{id:'staff',icon:'👤',label:'직원 관리'}]:[]),
+  ];
+}
+function go(p){
+  curPage=p;
+  getNavItems().forEach(item=>{
+    const s=document.getElementById('nav-'+item.id), b=document.getElementById('bnav-'+item.id);
+    if(s)s.className=item.id===p?'ni active':'ni';
+    if(b)b.className=item.id===p?'bni active':'bni';
+  });
+  renderPage();
+}
+function updateBadge(){const b=document.getElementById('alert-badge');if(b)b.textContent=getUpcoming(10).length;}
+
+// ===== RENDER DISPATCHER =====
+function renderAuthOrApp(){
+  const u=getCurrentUser();
+  document.getElementById('auth-wrap').style.display=u?'none':'flex';
+  document.getElementById('app-wrap').style.display=u?'flex':'none';
+  if(!u){renderAuth('login');}else{renderApp();}
+}
+
+// ===== AUTH RENDER =====
+let _regStore='';
+function renderAuth(view){
+  const el=document.getElementById('auth-inner');
+  if(view==='login') el.innerHTML=loginHTML();
+  if(view==='register') el.innerHTML=registerHTML();
+  if(view==='success') el.innerHTML=successHTML();
+}
+function loginHTML(){
+  const saved = getSavedCreds();
+  return `
+    <div class="auth-title">로그인</div>
+    <div id="auth-err" style="display:none" class="auth-err"></div>
+    <input class="auth-input" id="l-id" type="text" placeholder="아이디" autocomplete="username"
+      value="${saved.username||''}"/>
+    <input class="auth-input" id="l-pw" type="password" placeholder="비밀번호" autocomplete="current-password"
+      value="${saved.password||''}"
+      onkeydown="if(event.key==='Enter')doLoginBtn()"/>
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:12px;color:rgba(255,255,255,.5);font-size:13px">
+      <input type="checkbox" id="l-remember" ${saved.username?'checked':''} style="width:18px;height:18px;accent-color:var(--sage);cursor:pointer"/>
+      아이디·비밀번호 저장
+    </label>
+    <button class="auth-btn" onclick="doLoginBtn()">로그인</button>
+    <div class="auth-link">직원 계정이 없으신가요? <a onclick="renderAuth('register')">회원가입 →</a></div>
+    <div class="auth-setup">
+      💡 <strong>마스터 계정 (3개)</strong><br>
+      아이디: <code style="color:var(--gold)">master</code> · <code style="color:var(--gold)">tommybaby</code> · <code style="color:var(--gold)">yaguyagu</code><br>
+      비밀번호: <code style="color:var(--gold)">ansrlcjf4021</code>
+    </div>
+    <div style="margin-top:12px;text-align:center">
+      <a onclick="devReset()" style="font-size:11px;color:rgba(255,255,255,.2);cursor:pointer">🔄 테스트 데이터 초기화</a>
+    </div>`;
+}
+function devReset(){
+  if(!confirm('⚠️ 모든 사용자·고객 데이터를 초기화합니다.\n(마스터 계정만 남습니다)\n테스트 목적으로만 사용하세요.')) return;
+  ['bss_users','bss_users_ver','bss_saved_creds','baby_store_customers','n_shown'].forEach(k=>localStorage.removeItem(k));
+  sessionStorage.clear();
+  location.reload();
+}
+function getSavedCreds(){
+  try{ return JSON.parse(localStorage.getItem('bss_saved_creds')||'{}'); }catch{ return {}; }
+}
+function doLoginBtn(){
+  const id=document.getElementById('l-id').value.trim();
+  const pw=document.getElementById('l-pw').value;
+  const remember=document.getElementById('l-remember')?.checked;
+  const err=doLogin(id,pw);
+  if(err){
+    const e=document.getElementById('auth-err'); e.style.display='block'; e.textContent=err;
+  } else {
+    if(remember){
+      localStorage.setItem('bss_saved_creds', JSON.stringify({username:id, password:pw}));
+    } else {
+      localStorage.removeItem('bss_saved_creds');
+    }
+    renderAuthOrApp();
+  }
+}
+function registerHTML(){
+  return `
+    <div style="margin-bottom:16px"><a onclick="renderAuth('login')" style="color:rgba(255,255,255,.5);cursor:pointer;font-size:13px">← 로그인으로 돌아가기</a></div>
+    <div class="auth-title">직원 회원가입</div>
+    <div id="reg-err" style="display:none" class="auth-err"></div>
+    <input class="auth-input" id="r-id" type="text" placeholder="아이디 (영문/숫자, 3자 이상)" autocomplete="username"/>
+    <input class="auth-input" id="r-pw" type="password" placeholder="비밀번호 (6자 이상)" autocomplete="new-password"/>
+    <input class="auth-input" id="r-pw2" type="password" placeholder="비밀번호 확인" autocomplete="new-password"/>
+    <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:8px">소속 매장</div>
+    <div class="store-radio-row">
+      <div class="store-radio" id="sr-dobong" onclick="selectRegStore('dobong')" style="${_regStore==='dobong'?'border-color:var(--sage);background:rgba(122,171,138,.2);color:#fff':''}">🏪 도봉점</div>
+      <div class="store-radio" id="sr-yangju" onclick="selectRegStore('yangju')" style="${_regStore==='yangju'?'border-color:var(--sage);background:rgba(122,171,138,.2);color:#fff':''}">🏪 양주점</div>
+    </div>
+    <button class="auth-btn coral" onclick="doRegBtn()" style="margin-top:16px">가입 신청</button>
+    <div class="auth-link" style="color:rgba(255,255,255,.35);font-size:12px;margin-top:12px">가입 후 마스터 승인 후 로그인 가능합니다</div>`;
+}
+function selectRegStore(store){
+  _regStore = store;
+  // 입력값 유지하면서 매장 버튼만 스타일 토글
+  const active = 'border-color:var(--sage);background:rgba(122,171,138,.2);color:#fff';
+  const inactive = '';
+  const sd = document.getElementById('sr-dobong');
+  const sy = document.getElementById('sr-yangju');
+  if(sd) sd.style.cssText = store==='dobong' ? active : inactive;
+  if(sy) sy.style.cssText = store==='yangju' ? active : inactive;
+}
+function doRegBtn(){
+  const err=doRegister(
+    document.getElementById('r-id').value.trim(),
+    document.getElementById('r-pw').value,
+    document.getElementById('r-pw2').value,
+    _regStore
+  );
+  if(err){const e=document.getElementById('reg-err');e.style.display='block';e.textContent=err;}
+  else{_regStore='';renderAuth('success');}
+}
+function successHTML(){
+  return `<div class="auth-success">
+    <div class="as-icon">✅</div>
+    <div class="as-title">가입 신청 완료!</div>
+    <div class="as-sub">마스터 승인 후 로그인하실 수 있습니다.<br>매장 담당자에게 문의해주세요.</div>
+    <button class="auth-btn" style="margin-top:24px" onclick="renderAuth('login')">로그인 화면으로</button>
+  </div>`;
+}
+
+// ===== APP RENDER =====
+function renderApp(){
+  const u=getCurrentUser(); if(!u)return;
+  // Sidebar user info
+  document.getElementById('sb-user').innerHTML=`${roleBadge(u.role)} ${storeBadge(u.store)}
+    <div style="font-size:12px;color:rgba(255,255,255,.6);width:100%;margin-top:4px">@${u.username}</div>`;
+  // Nav
+  const items=getNavItems();
+  document.getElementById('nav-items').innerHTML=items.map(i=>`
+    <div class="ni ${i.id===curPage?'active':''}" onclick="go('${i.id}')" id="nav-${i.id}">
+      <span class="ico">${i.icon}</span><span>${i.label}</span>
+      ${i.id==='dashboard'?`<span class="bdg" id="alert-badge">0</span>`:''}
+    </div>`).join('');
+  // Bottom nav
+  document.getElementById('bnav-row').innerHTML=items.map(i=>`
+    <div class="bni ${i.id===curPage?'active':''}" onclick="go('${i.id}')" id="bnav-${i.id}">
+      <span class="bi">${i.icon}</span><span class="bl">${i.label}</span>
+    </div>`).join('');
+  renderPage();
+  updateBadge();
+}
+function renderPage(){
+  const mc=document.getElementById('main');
+  if(curPage==='dashboard') mc.innerHTML=renderDashboard();
+  if(curPage==='list') mc.innerHTML=renderList();
+
+  if(curPage==='staff') mc.innerHTML=renderStaff();
+  updateBadge();
+}
+
+// ===== DASHBOARD =====
+function renderDashboard(){
+  const u=getCurrentUser(), custs=getCust();
+  const u10=getUpcoming(10),u30=getUpcoming(30);
+  const perm=Notification.permission;
+  function aiItem({c,g,d}){
+    let cls='dd-green',txt='D-'+d;
+    if(d===0){cls='dd-red';txt='오늘!';}else if(d<=3)cls='dd-red';else if(d<=7)cls='dd-gold';
+    return `<div class="ai" onclick="openDetail('${c.id}')">
+      <div class="ai-av ${effType(c)==='pregnant'?'av-p':'av-n'}">${c.type==='pregnant'?'🤰':'👶'}</div>
+      <div class="ai-info">
+        <div class="ai-name">${c.name} · ${c.childName||'-'} ${storeBadge(c.store||'all')}</div>
+        <div class="ai-detail">${g.label}</div>
+        <div class="ai-detail">📅 ${fmtDate(g.date)} &nbsp;📦 ${(c.address||'').slice(0,20)}${(c.address||'').length>20?'...':''}</div>
+      </div>
+      <span class="dday ${cls}">${txt}</span>
+    </div>`;
+  }
+  const banner=perm==='default'?`<div class="notif-banner">
+    <span>🔔 알림을 허용하면 10일 내 발송 예정 고객을 즉시 알려드려요</span>
+    <button onclick="requestNotif()">알림 허용</button></div>`:'' ;
+  return `
+  <div class="topbar">
+    <div><div class="page-title">대시보드</div>
+    <div class="page-sub">${new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'})} · ${ROLE_LABEL[u.role]} @${u.username}</div></div>
+    ${perm==='granted'?`<div class="notif-btn on">🔔 알림 켜짐</div>`:`<button class="notif-btn" onclick="requestNotif()">🔔 알림 허용</button>`}
+  </div>
+  ${banner}
+  <div class="stat-grid">
+    <div class="stat-card"><div class="sc-icon">👥</div><div class="sc-num">${custs.length}</div><div class="sc-lbl">담당 고객${can('viewAll')?'':`(${STORE_LABEL[u.store]})`}</div></div>
+    <div class="stat-card"><div class="sc-icon">🤰</div><div class="sc-num">${custs.filter(c=>effType(c)==='pregnant').length}</div><div class="sc-lbl">임산부 고객</div></div>
+    <div class="stat-card sc-warn"><div class="sc-icon">🚨</div><div class="sc-num">${u10.length}</div><div class="sc-lbl">10일 내 발송</div></div>
+    <div class="stat-card sc-gold"><div class="sc-icon">🎁</div><div class="sc-num">${u30.length}</div><div class="sc-lbl">30일 내 발송</div></div>
+  </div>
+  <div class="alert-grid">
+    <div class="card red-top">
+      <div class="sec-title">🚨 10일 내 발송 예정<span class="sec-sub">&nbsp;알림 대상</span></div>
+      ${u10.length?u10.map(aiItem).join(''):'<div class="empty">📭 10일 내 발송 예정 없음</div>'}
+    </div>
+    <div class="card gold-top">
+      <div class="sec-title">📅 30일 내 발송 예정<span class="sec-sub">&nbsp;미리 확인</span></div>
+      ${u30.length?u30.map(aiItem).join(''):'<div class="empty">📭 30일 내 발송 예정 없음</div>'}
+    </div>
+  </div>`;
+}
+
+// ===== LIST =====
+function renderList(){
+  const u=getCurrentUser(), custs=getCust();
+  return `
+  <div class="topbar"><div><div class="page-title">고객 목록</div><div class="page-sub">총 ${custs.length}명</div></div></div>
+  <div class="card">
+    <div class="search-bar">
+      <input class="si" placeholder="이름, 연락처, 아이 이름 검색..." value="${sq}"
+        oninput="sq=this.value;document.getElementById('tbl').innerHTML=tblHTML()"/>
+      ${can('viewAll')?`<select class="fsel" onchange="sf=this.value;document.getElementById('tbl').innerHTML=tblHTML()">
+        <option value="all" ${sf==='all'?'selected':''}>전체 매장</option>
+        <option value="dobong" ${sf==='dobong'?'selected':''}>도봉점</option>
+        <option value="yangju" ${sf==='yangju'?'selected':''}>양주점</option>
+      </select>`:''}
+      <select class="fsel" onchange="tf=this.value;document.getElementById('tbl').innerHTML=tblHTML()">
+        <option value="all" ${tf==='all'?'selected':''}>전체</option>
+        <option value="pregnant" ${tf==='pregnant'?'selected':''}>임산부</option>
+        <option value="normal" ${tf==='normal'?'selected':''}>일반</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="exportCSV()">📥 엑셀</button>
+    </div>
+    <div id="tbl">${tblHTML()}</div>
+  </div>`;
+}
+function tblHTML(){
+  const all=getCust().filter(c=>{
+    const q=sq.toLowerCase();
+    const m=!q||c.name.includes(q)||c.phone.includes(q)||(c.childName||'').includes(q);
+    const sm=sf==='all'||!c.store||(c.store===sf);
+    return m&&sm&&(tf==='all'||effType(c)===tf);
+  });
+  if(!all.length)return'<div class="empty">🔍 검색 결과가 없습니다</div>';
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>매장</th><th>유형</th><th>고객명</th><th>아이</th><th>연락처</th><th>생일/예정일</th><th>다음 발송</th><th></th></tr></thead>
+    <tbody>${all.map(c=>{
+      const gifts=getGifts(c),next=gifts.find(g=>!g.sent&&daysUntil(g.date)>=0);
+      const nd=next?daysUntil(next.date):null;
+      return `<tr>
+        <td>${storeBadge(c.store||'all')}</td>
+        <td><span class="badge ${effType(c)==='pregnant'?'bp':'bn'}">${effType(c)==='pregnant'?'🤰 임산부':'👶 일반'}</span></td>
+        <td><strong>${c.name}</strong></td><td>${c.childName||'-'}</td><td>${c.phone||'-'}</td>
+        <td>${fmtDate(effDate(c))}</td>
+        <td>${next?`<span class="badge bs">${nd===0?'오늘!':'D-'+nd}</span><br><span style="font-size:11px;color:var(--mid)">${next.label}</span>`:'<span style="font-size:11px;color:var(--light)">완료</span>'}</td>
+        <td><button class="btn btn-secondary btn-sm" onclick="openDetail('${c.id}')">상세</button></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+// ===== DETAIL =====
+function openDetail(id){
+  const all=getAllCusts(), c=all.find(x=>x.id===id); if(!c||c.deleted)return;
+  const gifts=getGifts(c), isPreg=c.type==='pregnant';
+  function gStep(g){
+    const d=daysUntil(g.date);let cls='',stat='';
+    if(g.sent){cls='done';stat='<span style="font-size:11px;color:var(--sage);margin-left:6px">✅ 발송 완료</span>';}
+    else if(d!==null&&d<=10&&d>=0){cls='upcom';stat=`<span style="font-size:11px;color:var(--coral);margin-left:5px">🚨 ${d===0?'오늘!':'D-'+d}</span>`;}
+    const btn=can('markSent')&&!g.sent&&d!==null&&d>=0
+      ?`<button class="btn btn-sm btn-secondary" style="margin-top:5px" onclick="markSent('${c.id}','${g.date}')">발송 완료 처리</button>`:'';
+    return `<div class="gs ${cls}"><div class="gs-date">${fmtDate(g.date)}${stat}</div><div class="gs-lbl">${g.label}</div>${btn}</div>`;
+  }
+  const codeSection=isPreg?`
+    <div class="dr"><span class="dk">출산예정일</span><span class="dv">${fmtDate(c.dueDate)}</span></div>
+    <div class="dr"><span class="dk">실제출산일</span><span class="dv">${c.actualBirthDate?fmtDate(c.actualBirthDate):'<span style="color:var(--light)">미수정</span>'}</span></div>
+    <div class="dr"><span class="dk">인증코드</span><span class="dv" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      ${c.birthDateModified
+        ?`<span style="font-family:monospace;color:var(--light);text-decoration:line-through">${c.verificationCode||'-'}</span><span style="font-size:11px;color:var(--light)">🔒 사용 완료</span>`
+        :`<span style="font-family:monospace;letter-spacing:3px;color:var(--gold);font-size:16px;font-weight:700">${c.verificationCode||'-'}</span>
+         <button class="btn btn-sm btn-secondary" style="font-size:11px" onclick="copyCode('${c.verificationCode}')">📋 복사</button>`
+      }</span></div>`
+    :`<div class="dr"><span class="dk">생년월일</span><span class="dv">${fmtDate(c.birthDate)}</span></div>`;
+
+  const delBtn=can('deleteCust')?`<button class="btn btn-danger btn-sm" onclick="confirmDelete('${c.id}','${c.name}')">삭제</button>`:'';
+
+  openModal(`
+    <div class="modal-title">${isPreg?'🤰':'👶'} ${c.name} 고객 상세</div>
+    <div class="dr"><span class="dk">매장</span><span class="dv">${storeBadge(c.store||'all')}</span></div>
+    <div class="dr"><span class="dk">유형</span><span class="dv"><span class="badge ${isPreg?'bp':'bn'}">${isPreg?'임산부':'일반'}</span></span></div>
+    <div class="dr"><span class="dk">고객명</span><span class="dv">${c.name}</span></div>
+    <div class="dr"><span class="dk">연락처</span><span class="dv">${c.phone||'-'}</span></div>
+    <div class="dr"><span class="dk">주소</span><span class="dv">${c.address||'-'}</span></div>
+    <div class="dr"><span class="dk">아이 이름</span><span class="dv">${c.childName||'-'}</span></div>
+    <div class="dr"><span class="dk">등록일</span><span class="dv">${fmtDate(c.registeredAt)}</span></div>
+    ${codeSection}
+    <div style="margin-top:16px">
+      <div style="font-size:14px;font-weight:600;margin-bottom:11px">🎁 선물 발송 일정</div>
+      <div class="gift-tl">${gifts.map(g=>gStep(g)).join('')}</div>
+    </div>
+    <div class="modal-footer">
+      ${delBtn}
+      <button class="btn btn-secondary" onclick="document.getElementById('overlay').style.display='none'">닫기</button>
+    </div>`);
+}
+function markSent(cid,gDate){
+  const all=getAllCusts(),c=all.find(x=>x.id===cid); if(!c)return;
+  const gifts=getGifts(c),g=gifts.find(x=>x.date===gDate);
+  if(g){g.sent=true;c.gifts=gifts;}
+  saveCust(all);showToast('발송 완료 처리됐습니다','✅');openDetail(cid);updateBadge();
+}
+// ===== PASSWORD CHANGE =====
+function showChangePwd(){
+  openModal(`
+    <div class="modal-title">🔑 비밀번호 변경</div>
+    <div id="pwd-err" style="display:none;background:var(--coral-light);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:#b35c3e;margin-bottom:12px"></div>
+    <div class="modal-form-group">
+      <label class="modal-label">현재 비밀번호</label>
+      <input class="modal-input" id="pw-cur" type="password" placeholder="현재 비밀번호"/>
+    </div>
+    <div class="modal-form-group">
+      <label class="modal-label">새 비밀번호 (6자 이상)</label>
+      <input class="modal-input" id="pw-new" type="password" placeholder="새 비밀번호"/>
+    </div>
+    <div class="modal-form-group">
+      <label class="modal-label">새 비밀번호 확인</label>
+      <input class="modal-input" id="pw-new2" type="password" placeholder="새 비밀번호 다시 입력"
+        onkeydown="if(event.key==='Enter')doChangePwd()"/>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('overlay').style.display='none'">취소</button>
+      <button class="btn btn-primary" onclick="doChangePwd()">변경 완료</button>
+    </div>
+  `);
+}
+function doChangePwd(){
+  const u = getCurrentUser();
+  const cur = document.getElementById('pw-cur').value;
+  const nw  = document.getElementById('pw-new').value;
+  const nw2 = document.getElementById('pw-new2').value;
+  const errEl = document.getElementById('pwd-err');
+  function showErr(msg){ errEl.style.display='block'; errEl.textContent=msg; }
+  if(hashPwd(cur) !== u.pwd){ showErr('현재 비밀번호가 올바르지 않습니다.'); return; }
+  if(nw.length < 6){ showErr('새 비밀번호는 6자 이상이어야 합니다.'); return; }
+  if(nw !== nw2){ showErr('새 비밀번호가 일치하지 않습니다.'); return; }
+  const users = getUsers();
+  const target = users.find(x=>x.id===u.id);
+  target.pwd = hashPwd(nw);
+  saveUsers(users);
+  // 저장된 자격증명도 업데이트
+  const saved = getSavedCreds();
+  if(saved.username === u.username){
+    localStorage.setItem('bss_saved_creds', JSON.stringify({username:u.username, password:nw}));
+  }
+  document.getElementById('overlay').style.display='none';
+  showToast('비밀번호가 변경됐습니다','🔑');
+}
+
+function copyCode(code){
+  if(navigator.clipboard&&location.protocol==='https:'){
+    navigator.clipboard.writeText(code).then(()=>showToast(`코드 복사됨: ${code}`,'📋')).catch(()=>fallbackCopy(code));
+  }else fallbackCopy(code);
+}
+function fallbackCopy(code){
+  const ta=document.createElement('textarea');ta.value=code;
+  ta.style.cssText='position:fixed;top:-9999px;opacity:0;';
+  document.body.appendChild(ta);ta.focus();ta.select();
+  try{document.execCommand('copy');showToast(`코드 복사됨: ${code}`,'📋');}
+  catch{showToast(`인증코드: ${code}`,'🔑');}
+  document.body.removeChild(ta);
+}
+function confirmDelete(id,name){
+  openModal(`
+    <div class="modal-title">🗑️ 고객 삭제</div>
+    <div style="font-size:15px;color:var(--dark);margin-bottom:8px"><strong>${name}</strong> 고객을 삭제하시겠습니까?</div>
+    <div style="font-size:13px;color:var(--mid);margin-bottom:20px">목록에서 즉시 숨김 처리되며, 만 72개월 도달 시 완전히 삭제됩니다.</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="openDetail('${id}')">← 취소</button>
+      <button class="btn btn-coral" onclick="delCust('${id}')">삭제 확인</button>
+    </div>`);
+}
+function delCust(id){
+  const all=getAllCusts(),c=all.find(x=>x.id===id); if(!c)return;
+  c.deleted=true;c.deletedAt=today();
+  saveCust(all);document.getElementById('overlay').style.display='none';
+  showToast('고객 정보가 숨김 처리됐습니다','🗑️');renderPage();
+}
+
+// ===== STAFF MANAGEMENT =====
+function renderStaff(){
+  const users=getUsers();
+  const pending=users.filter(u=>!u.approved&&u.active);
+  const active=users.filter(u=>u.approved&&u.active&&u.role!=='master');
+  function pendRow(u){
+    return `<tr>
+      <td><strong>${u.username}</strong></td>
+      <td>${storeBadge(u.store||'')}</td>
+      <td>${fmtDate(u.createdAt)}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-primary" onclick="showApproveModal('${u.id}')">✅ 승인</button>
+        <button class="btn btn-sm btn-danger" onclick="rejectUser('${u.id}','${u.username}')">✗ 거절</button>
+      </td>
+    </tr>`;
+  }
+  function activeRow(u){
+    return `<tr>
+      <td><strong>${u.username}</strong></td>
+      <td>${roleBadge(u.role)}</td>
+      <td>${storeBadge(u.store||'all')}</td>
+      <td>${fmtDate(u.createdAt)}</td>
+      <td>
+        <button class="btn btn-sm btn-secondary" onclick="showUpdateModal('${u.id}')">⚙️ 변경</button>
+        <button class="btn btn-sm btn-danger" style="margin-top:4px" onclick="deactivateUser('${u.id}','${u.username}')">비활성화</button>
+      </td>
+    </tr>`;
+  }
+  return `
+  <div class="topbar"><div><div class="page-title">직원 관리</div><div class="page-sub">마스터 전용 메뉴</div></div></div>
+  ${pending.length?`
+  <div class="card" style="border-top:3px solid var(--coral);margin-bottom:20px">
+    <div class="sec-title" style="color:var(--coral)">🔔 승인 대기 (${pending.length}명)</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>아이디</th><th>신청 매장</th><th>가입일</th><th>처리</th></tr></thead>
+      <tbody>${pending.map(pendRow).join('')}</tbody>
+    </table></div>
+  </div>`:''}
+  <div class="card">
+    <div class="sec-title">👥 전체 직원 목록 (${active.length}명)</div>
+    ${active.length?`<div class="table-wrap"><table>
+      <thead><tr><th>아이디</th><th>역할</th><th>매장</th><th>가입일</th><th>관리</th></tr></thead>
+      <tbody>${active.map(activeRow).join('')}</tbody>
+    </table></div>`:`<div class="empty">등록된 직원이 없습니다</div>`}
+  </div>`;
+}
+
+let _approveId='', _approveRole='staff', _approveStore='';
+function showApproveModal(uid){
+  _approveId=uid;_approveRole='staff';
+  const u=getUsers().find(x=>x.id===uid); if(!u)return;
+  _approveStore=u.store||'dobong';
+  renderApproveModal();
+}
+function renderApproveModal(){
+  const u=getUsers().find(x=>x.id===_approveId); if(!u)return;
+  openModal(`
+    <div class="modal-title">✅ 직원 승인</div>
+    <div style="font-size:14px;color:var(--mid);margin-bottom:16px">@${u.username} · 신청 매장: ${storeBadge(u.store||'')}</div>
+    <div class="modal-label" style="margin-bottom:10px">역할 선택</div>
+    <div class="role-select-row">
+      <div class="role-opt ${_approveRole==='manager'?'sel-manager':''}" onclick="_approveRole='manager';_approveStore='all';renderApproveModal()">
+        <div class="ro-icon">⭐</div><div class="ro-name">매니저</div>
+        <div class="ro-desc">전체 매장 열람<br>선물 발송 처리 가능</div>
+      </div>
+      <div class="role-opt ${_approveRole==='staff'?'sel-staff':''}" onclick="_approveRole='staff';renderApproveModal()">
+        <div class="ro-icon">👤</div><div class="ro-name">직원</div>
+        <div class="ro-desc">담당 매장만 열람<br>읽기 전용</div>
+      </div>
+    </div>
+    ${_approveRole==='staff'?`
+    <div class="modal-label" style="margin:12px 0 8px">담당 매장 지정</div>
+    <div class="store-opt-row">
+      <div class="store-opt ${_approveStore==='dobong'?'sel-dobong':''}" onclick="_approveStore='dobong';renderApproveModal()">🏪 도봉점</div>
+      <div class="store-opt ${_approveStore==='yangju'?'sel-yangju':''}" onclick="_approveStore='yangju';renderApproveModal()">🏪 양주점</div>
+    </div>`:'<div class="info-box">매니저는 도봉점/양주점 전체 열람 권한을 가집니다.</div>'}
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('overlay').style.display='none'">취소</button>
+      <button class="btn btn-primary" onclick="doApprove()">승인 완료</button>
+    </div>`);
+}
+function doApprove(){
+  if(_approveRole==='staff'&&!_approveStore){showToast('매장을 선택해주세요','⚠️');return;}
+  const users=getUsers(),u=users.find(x=>x.id===_approveId); if(!u)return;
+  u.approved=true;u.role=_approveRole;u.store=_approveRole==='manager'?'all':_approveStore;
+  saveUsers(users);document.getElementById('overlay').style.display='none';
+  showToast(`@${u.username} 승인 완료!`,'✅');renderPage();
+}
+function rejectUser(uid,username){
+  openModal(`
+    <div class="modal-title">✗ 가입 거절</div>
+    <div style="font-size:14px;color:var(--dark);margin-bottom:20px"><strong>@${username}</strong> 의 가입을 거절하시겠습니까?<br><span style="font-size:12px;color:var(--mid)">거절 시 계정이 삭제됩니다.</span></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="renderPage();document.getElementById('overlay').style.display='none'">취소</button>
+      <button class="btn btn-coral" onclick="doReject('${uid}')">거절 확인</button>
+    </div>`);
+}
+function doReject(uid){
+  let users=getUsers();users=users.filter(u=>u.id!==uid);saveUsers(users);
+  document.getElementById('overlay').style.display='none';showToast('가입이 거절됐습니다','✗');renderPage();
+}
+
+let _updId='', _updRole='', _updStore='';
+function showUpdateModal(uid){
+  const u=getUsers().find(x=>x.id===uid); if(!u)return;
+  _updId=uid;_updRole=u.role;_updStore=u.store;
+  renderUpdateModal();
+}
+function renderUpdateModal(){
+  const u=getUsers().find(x=>x.id===_updId); if(!u)return;
+  openModal(`
+    <div class="modal-title">⚙️ 권한 변경</div>
+    <div style="font-size:14px;color:var(--mid);margin-bottom:16px">@${u.username}</div>
+    <div class="modal-label" style="margin-bottom:10px">역할</div>
+    <div class="role-select-row">
+      <div class="role-opt ${_updRole==='manager'?'sel-manager':''}" onclick="_updRole='manager';_updStore='all';renderUpdateModal()">
+        <div class="ro-icon">⭐</div><div class="ro-name">매니저</div><div class="ro-desc">전체 열람 + 발송 처리</div>
+      </div>
+      <div class="role-opt ${_updRole==='staff'?'sel-staff':''}" onclick="_updRole='staff';renderUpdateModal()">
+        <div class="ro-icon">👤</div><div class="ro-name">직원</div><div class="ro-desc">담당 매장 · 읽기 전용</div>
+      </div>
+    </div>
+    ${_updRole==='staff'?`
+    <div class="modal-label" style="margin:12px 0 8px">담당 매장</div>
+    <div class="store-opt-row">
+      <div class="store-opt ${_updStore==='dobong'?'sel-dobong':''}" onclick="_updStore='dobong';renderUpdateModal()">🏪 도봉점</div>
+      <div class="store-opt ${_updStore==='yangju'?'sel-yangju':''}" onclick="_updStore='yangju';renderUpdateModal()">🏪 양주점</div>
+    </div>`:''}
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('overlay').style.display='none'">취소</button>
+      <button class="btn btn-primary" onclick="doUpdate()">변경 완료</button>
+    </div>`);
+}
+function doUpdate(){
+  const users=getUsers(),u=users.find(x=>x.id===_updId); if(!u)return;
+  u.role=_updRole;u.store=_updRole==='manager'?'all':_updStore;
+  saveUsers(users);document.getElementById('overlay').style.display='none';
+  showToast(`@${u.username} 권한이 변경됐습니다`,'✅');renderPage();
+}
+function deactivateUser(uid,username){
+  openModal(`
+    <div class="modal-title">🚫 계정 비활성화</div>
+    <div style="font-size:14px;margin-bottom:20px"><strong>@${username}</strong> 계정을 비활성화하시겠습니까?<br><span style="font-size:12px;color:var(--mid)">해당 직원은 로그인이 불가능해집니다.</span></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="document.getElementById('overlay').style.display='none'">취소</button>
+      <button class="btn btn-coral" onclick="doDeactivate('${uid}')">비활성화</button>
+    </div>`);
+}
+function doDeactivate(uid){
+  const users=getUsers(),u=users.find(x=>x.id===uid); if(!u)return;
+  u.active=false;saveUsers(users);
+  document.getElementById('overlay').style.display='none';
+  showToast('계정이 비활성화됐습니다','🚫');renderPage();
+}
+
+
+// ===== CSV =====
+function exportCSV(){
+  const custs=getCust();
+  const hdr=['매장','고객유형','고객명','연락처','주소','아이이름','출산예정일/생년월일','실제출산일','등록일','인증코드','코드상태','다음선물일','다음선물명'];
+  const rows=custs.map(c=>{
+    const gifts=getGifts(c),next=gifts.find(g=>!g.sent&&daysUntil(g.date)>=0);
+    return[STORE_LABEL[c.store||'all']||'',c.type==='pregnant'?'임산부':'일반',c.name,c.phone||'',c.address||'',c.childName||'',
+      c.type==='pregnant'?(c.dueDate||''):(c.birthDate||''),c.type==='pregnant'?(c.actualBirthDate||''):'',
+      c.registeredAt||'',c.type==='pregnant'?(c.verificationCode||''):'',
+      c.type==='pregnant'?(c.birthDateModified?'사용완료':'미사용'):'-',
+      next?next.date:'완료',next?next.label:''];
+  });
+  const csv='\uFEFF'+[hdr,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),download:`고객목록_${today()}.csv`});
+  a.click();showToast('엑셀 다운로드 완료','📥');
+}
+
+// ===== AUTO CLEANUP (72mo) =====
+function autoCleanup(){
+  const all=getAllCusts();const now=new Date();now.setHours(0,0,0,0);const before=all.length;
+  const filtered=all.filter(c=>{
+    const base=c.type==='pregnant'?(c.actualBirthDate||c.dueDate):c.birthDate;
+    if(!base)return!c.deleted;
+    const birth=new Date(base);
+    const months=(now.getFullYear()-birth.getFullYear())*12+(now.getMonth()-birth.getMonth());
+    return months<72;
+  });
+  if(filtered.length<before){const removed=before-filtered.length;saveCust(filtered);showToast(`만 72개월 도달 ${removed}명 자동 삭제됐습니다`,'🧹');renderPage();}
+}
+
+// ===== INIT =====
+getUsers(); // seed masters if first run
+autoCleanup();
+
+// 저장된 로그인 정보로 자동 로그인 시도
+(function autoLogin(){
+  const saved = getSavedCreds();
+  if(saved.username && saved.password && !getCurrentUser()){
+    const err = doLogin(saved.username, saved.password);
+    if(err){
+      // 저장 정보가 더 이상 유효하지 않으면 삭제
+      localStorage.removeItem('bss_saved_creds');
+    }
+  }
+})();
+
+renderAuthOrApp();
+setTimeout(checkNotifications,2000);
+setInterval(()=>{updateBadge();checkNotifications();},600000);
+setInterval(autoCleanup,3600000);
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
