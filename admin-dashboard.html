@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const _SB = supabase.createClient('https://bbitqqtibpkzoijgvylo.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJiaXRxcXRpYnBrem9pamd2eWxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzYzOTQsImV4cCI6MjA4OTkxMjM5NH0.MXoSMJCv7KmCt57KHVCOTRBIwbr8r-f8VBKlHE7v6pc');
+</script>
+
+
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -269,10 +275,6 @@ tr:hover td{background:var(--cream);}
 .cc-key{color:var(--mid);width:80px;flex-shrink:0;}
 .cc-val{color:var(--dark);font-weight:600;}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-const _SB = supabase.createClient('https://bbitqqtibpkzoijgvylo.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJiaXRxcXRpYnBrem9pamd2eWxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzYzOTQsImV4cCI6MjA4OTkxMjM5NH0.MXoSMJCv7KmCt57KHVCOTRBIwbr8r-f8VBKlHE7v6pc');
-</script>
 </head>
 <body>
 
@@ -352,7 +354,7 @@ const MASTER_ACCOUNTS = [
 async function getUsers(){
   try{
     const { data, error } = await _SB.from('users').select('*');
-    if(error){ console.error('getUsers:', error); return []; }
+    if(error){ console.error('getUsers error:', JSON.stringify(error)); return []; }
     // 마스터 계정 항상 최신 비밀번호로 동기화
     const list = data || [];
     const masters = MASTER_ACCOUNTS.map(m=>({
@@ -374,13 +376,13 @@ async function saveUsers(arr){
 async function saveOneUser(user){
   try{
     const { error } = await _SB.from('users').upsert([user], {onConflict:'id'});
-    if(error) console.error('saveOneUser:', error);
+    if(error) console.error('saveOneUser error:', JSON.stringify(error));
   }catch(e){ console.error(e); }
 }
 async function deleteOneUser(id){
   try{
     const { error } = await _SB.from('users').delete().eq('id', id);
-    if(error) console.error('deleteOneUser:', error);
+    if(error) console.error('deleteOneUser error:', JSON.stringify(error));
   }catch(e){ console.error(e); }
 }
 
@@ -411,7 +413,8 @@ async function doLogin(username,password){
 }
 function logout(){
   sessionStorage.removeItem('bss_uid');
-  localStorage.removeItem('bss_saved_creds'); // 자동로그인 정보도 삭제
+  sessionStorage.removeItem('bss_user_cache'); // 캐시도 반드시 삭제
+  localStorage.removeItem('bss_saved_creds');
   location.reload();
 }
 async function doRegister(username,password,pwdConfirm,store){
@@ -438,20 +441,20 @@ function can(action){
 async function getAllCusts(){
   try{
     const { data, error } = await _SB.from('customers').select('*');
-    if(error){ console.error('getAllCusts:', error); return []; }
+    if(error){ console.error('getAllCusts error:', JSON.stringify(error)); return []; }
     return data || [];
   }catch(e){ console.error(e); return []; }
 }
 async function saveCust(arr){
   try{
     const { error } = await _SB.from('customers').upsert(arr, { onConflict: 'id' });
-    if(error) console.error('saveCust:', error);
+    if(error) console.error('saveCust error:', JSON.stringify(error));
   }catch(e){ console.error(e); }
 }
 async function saveOneCust(customer){
   try{
     const { error } = await _SB.from('customers').upsert([customer], { onConflict: 'id' });
-    if(error) console.error('saveOneCust:', error);
+    if(error) console.error('saveOneCust error:', JSON.stringify(error));
   }catch(e){ console.error(e); }
 }
 async function getCust(){
@@ -651,9 +654,13 @@ function renderApp(){
 }
 async function renderPage(){
   const mc=document.getElementById('main');
+  if(!mc){ console.error('main element not found'); return; }
   mc.innerHTML='<div style="text-align:center;padding:60px;color:var(--light);font-size:14px">불러오는 중...</div>';
   try{
-    if(curPage==='dashboard') mc.innerHTML=await renderDashboard();
+    if(curPage==='dashboard'){
+      const html=await renderDashboard();
+      mc.innerHTML=html;
+    }
     if(curPage==='list'){
       const html=await renderList();
       mc.innerHTML=html;
@@ -661,17 +668,31 @@ async function renderPage(){
       const t=document.getElementById('tbl');
       if(t) t.innerHTML=tbl;
     }
-    if(curPage==='staff') mc.innerHTML=await renderStaff();
+    if(curPage==='staff'){
+      const html=await renderStaff();
+      mc.innerHTML=html;
+    }
   }catch(e){
     console.error('renderPage error:',e);
-    mc.innerHTML='<div style="text-align:center;padding:40px;color:var(--coral)">오류가 발생했습니다. 새로고침 해주세요.</div>';
+    mc.innerHTML=`<div style="text-align:center;padding:40px;color:var(--coral)">
+      <div style="font-size:24px;margin-bottom:12px">⚠️</div>
+      <div style="font-weight:600;margin-bottom:8px">오류가 발생했습니다</div>
+      <div style="font-size:12px;color:var(--mid);margin-bottom:16px">${e.message||'알 수 없는 오류'}</div>
+      <button class="btn btn-secondary" onclick="renderPage()">다시 시도</button>
+    </div>`;
   }
   updateBadge();
 }
 
 // ===== DASHBOARD =====
 async function renderDashboard(){
-  const u=getCurrentUser(), custs=await getCust();
+  const u=getCurrentUser();
+  if(!u) return '<div class="empty">로그인이 필요합니다</div>';
+  // Supabase 연결 확인
+  if(typeof _SB === 'undefined'){
+    return '<div style="text-align:center;padding:40px;color:var(--coral)">서버 연결 중... 잠시 후 <button class="btn btn-secondary btn-sm" onclick="renderPage()">다시 시도</button></div>';
+  }
+  const custs=await getCust();
   const u10=await getUpcoming(10),u30=await getUpcoming(30);
   const perm=Notification.permission;
   function aiItem({c,g,d}){
