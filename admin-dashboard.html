@@ -545,7 +545,7 @@ async function getUpcoming(days){
 }
 
 // ===== NOTIFICATIONS =====
-let _notifShown=new Set(JSON.parse(sessionStorage.getItem('n_shown')||'[]'));
+let _notifShown=new Set(JSON.parse(localStorage.getItem('n_shown')||'[]'));
 async function checkNotifications(){
   if(typeof Notification === 'undefined' || Notification.permission!=='granted') return;
   // 선물 발송 알림
@@ -553,7 +553,7 @@ async function checkNotifications(){
     const k=`${c.id}_${g.date}`;
     if(!_notifShown.has(k)){
       _notifShown.add(k);
-      sessionStorage.setItem('n_shown',JSON.stringify([..._notifShown]));
+      localStorage.setItem('n_shown',JSON.stringify([..._notifShown]));
       new Notification('🎁 선물 발송 알림 · BABY HAÜS',{body:`${c.name} · ${c.childName} · ${g.label}\n${d===0?'오늘 발송!':'D-'+d+' 예정'}`});
     }
   });
@@ -566,7 +566,7 @@ async function checkNotifications(){
       const k=`pending_${pu.id}`;
       if(!_notifShown.has(k)){
         _notifShown.add(k);
-        sessionStorage.setItem('n_shown',JSON.stringify([..._notifShown]));
+        localStorage.setItem('n_shown',JSON.stringify([..._notifShown]));
         new Notification('👤 신규 직원 가입 대기 · BABY HAÜS',{body:`@${pu.username} (${STORE_LABEL[pu.store]||pu.store}) 승인 대기 중입니다`});
       }
     });
@@ -1362,8 +1362,59 @@ autoCleanup(); // 72개월 자동 삭제 (비동기, 백그라운드)
 })();
 // renderAuthOrApp() is called inside autoLogin above
 setTimeout(checkNotifications,2000);
-setInterval(()=>{updateBadge();checkNotifications();},600000);
 setInterval(autoCleanup,3600000);
+
+// ===== SUPABASE REALTIME =====
+function setupRealtime(){
+  // customers 테이블 변경 감지
+  _SB.channel('customers-changes')
+    .on('postgres_changes',
+      {event:'*', schema:'public', table:'customers'},
+      async (payload)=>{
+        console.log('customers changed:', payload.eventType);
+        await updateBadge();
+        // 현재 열린 페이지 새로고침
+        if(curPage==='dashboard'||curPage==='list'){
+          await renderPage();
+        }
+      }
+    )
+    .subscribe();
+
+  // users 테이블 변경 감지 (신규 가입 등)
+  _SB.channel('users-changes')
+    .on('postgres_changes',
+      {event:'INSERT', schema:'public', table:'users'},
+      async (payload)=>{
+        console.log('new user:', payload.new?.username);
+        await updateBadge();
+        // 신규 가입 알림
+        if(typeof Notification !== 'undefined' && Notification.permission==='granted'){
+          const pu = payload.new;
+          if(pu && !pu.approved){
+            const k = `pending_${pu.id}`;
+            if(!_notifShown.has(k)){
+              _notifShown.add(k);
+              localStorage.setItem('n_shown',JSON.stringify([..._notifShown]));
+              new Notification('👤 신규 직원 가입 대기 · BABY HAÜS',{
+                body:`@${pu.username} (${STORE_LABEL[pu.store]||pu.store}) 승인 대기 중입니다`
+              });
+            }
+          }
+        }
+        if(curPage==='staff') await renderPage();
+      }
+    )
+    .on('postgres_changes',
+      {event:'UPDATE', schema:'public', table:'users'},
+      async ()=>{
+        await updateBadge();
+        if(curPage==='staff') await renderPage();
+      }
+    )
+    .subscribe();
+}
+setupRealtime();
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 // ===== PULL TO REFRESH =====
@@ -1398,19 +1449,29 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch
     const dist = e.changedTouches[0].clientY - startY;
     pulling = false;
     startY = 0;
+    // 무조건 인디케이터 초기화
+    const hide = ()=>{
+      indicator.classList.remove('visible');
+      indicator.style.height = '0';
+      spinner.style.animation = 'none';
+    };
     if(dist > threshold){
       ptrText.textContent = '새로고침 중...';
       spinner.style.animation = '';
       indicator.classList.add('visible');
       indicator.style.height = '52px';
-      await renderPage();
-      await updateBadge();
+      try{
+        await renderPage();
+        await updateBadge();
+      }catch(e){ console.error(e); }
     }
-    // 복원
-    setTimeout(()=>{
-      indicator.classList.remove('visible');
-      indicator.style.height = '0';
-    }, 400);
+    setTimeout(hide, 500);
+  }, {passive:true});
+  // 터치 취소시에도 숨김
+  document.addEventListener('touchcancel', ()=>{
+    pulling=false; startY=0;
+    indicator.classList.remove('visible');
+    indicator.style.height='0';
   }, {passive:true});
 })();
 </script>
