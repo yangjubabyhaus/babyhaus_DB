@@ -256,6 +256,18 @@ tr:hover td{background:var(--cream);}
   .topbar{flex-direction:column;align-items:flex-start;}
 }
 @media(max-width:480px){.stat-grid{grid-template-columns:1fr 1fr;}}
+
+/* ===== CUSTOMER CARDS (mobile) ===== */
+.cust-card{background:var(--white);border:1.5px solid var(--cream2);border-radius:var(--radius);
+  padding:16px;margin-bottom:12px;cursor:pointer;transition:all .18s;box-shadow:var(--shadow);}
+.cust-card:hover{border-color:var(--sage);background:var(--sage-light);}
+.cc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;}
+.cc-left{flex:1;min-width:0;}
+.cc-name{font-size:16px;font-weight:700;color:var(--dark);margin-bottom:5px;}
+.cc-meta{display:flex;gap:5px;flex-wrap:wrap;}
+.cc-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--cream2);font-size:13px;}
+.cc-key{color:var(--mid);width:80px;flex-shrink:0;}
+.cc-val{color:var(--dark);font-weight:600;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -341,18 +353,16 @@ async function getUsers(){
   try{
     const { data, error } = await _SB.from('users').select('*');
     if(error){ console.error('getUsers:', error); return []; }
-    // 마스터 계정이 DB에 없으면 자동 생성
+    // 마스터 계정 항상 최신 비밀번호로 동기화
     const list = data || [];
-    const missing = MASTER_ACCOUNTS.filter(m => !list.find(u => u.id === m.id));
-    if(missing.length > 0){
-      const newMasters = missing.map(m=>({
-        ...m, pwd:hashPwd(DEFAULT_PWD),
-        role:'master', store:'all', approved:true, active:true, createdAt:today()
-      }));
-      await _SB.from('users').upsert(newMasters, {onConflict:'id'});
-      return [...list, ...newMasters];
-    }
-    return list;
+    const masters = MASTER_ACCOUNTS.map(m=>({
+      ...m, pwd:hashPwd(DEFAULT_PWD),
+      role:'master', store:'all', approved:true, active:true, createdAt:today()
+    }));
+    await _SB.from('users').upsert(masters, {onConflict:'id'});
+    // 기존 목록에서 마스터 교체
+    const staffOnly = list.filter(u => u.role !== 'master');
+    return [...masters, ...staffOnly];
   }catch(e){ console.error(e); return []; }
 }
 async function saveUsers(arr){
@@ -532,11 +542,7 @@ function loginHTML(){
     </label>
     <button class="auth-btn" onclick="doLoginBtn()">로그인</button>
     <div class="auth-link">직원 계정이 없으신가요? <a onclick="renderAuth('register')">회원가입 →</a></div>
-    <div class="auth-setup">
-      💡 <strong>마스터 계정 (3개)</strong><br>
-      아이디: <code style="color:var(--gold)">master</code> · <code style="color:var(--gold)">tommybaby</code> · <code style="color:var(--gold)">yaguyagu</code><br>
-      비밀번호: <code style="color:var(--gold)">ansrlcjf4021</code>
-    </div>
+
     <div style="margin-top:12px;text-align:center">
       <a onclick="devReset()" style="font-size:11px;color:rgba(255,255,255,.2);cursor:pointer">🔄 테스트 데이터 초기화</a>
     </div>`;
@@ -645,14 +651,21 @@ function renderApp(){
 }
 async function renderPage(){
   const mc=document.getElementById('main');
-  // 로딩 인디케이터
-  if(curPage!=='staff') mc.innerHTML='<div style="text-align:center;padding:60px;color:var(--light);font-size:14px">불러오는 중...</div>';
-  if(curPage==='dashboard'){ mc.innerHTML=await renderDashboard(); }
-  if(curPage==='list'){
-    mc.innerHTML=await renderList();
-    tblHTML().then(h=>{ const t=document.getElementById('tbl'); if(t) t.innerHTML=h; });
+  mc.innerHTML='<div style="text-align:center;padding:60px;color:var(--light);font-size:14px">불러오는 중...</div>';
+  try{
+    if(curPage==='dashboard') mc.innerHTML=await renderDashboard();
+    if(curPage==='list'){
+      const html=await renderList();
+      mc.innerHTML=html;
+      const tbl=await tblHTML();
+      const t=document.getElementById('tbl');
+      if(t) t.innerHTML=tbl;
+    }
+    if(curPage==='staff') mc.innerHTML=await renderStaff();
+  }catch(e){
+    console.error('renderPage error:',e);
+    mc.innerHTML='<div style="text-align:center;padding:40px;color:var(--coral)">오류가 발생했습니다. 새로고침 해주세요.</div>';
   }
-  if(curPage==='staff'){ mc.innerHTML='<div style="text-align:center;padding:60px;color:var(--light);font-size:14px">불러오는 중...</div>'; renderStaff().then(h=>mc.innerHTML=h); }
   updateBadge();
 }
 
@@ -703,10 +716,11 @@ async function renderDashboard(){
 }
 
 // ===== LIST =====
-function renderList(){
-  const u=getCurrentUser(), custs=getCust();
+async function renderList(){
+  const u=getCurrentUser(), custs=await getCust();
+  const total=custs.length;
   return `
-  <div class="topbar"><div><div class="page-title">고객 목록</div><div class="page-sub">총 ${custs.length}명</div></div></div>
+  <div class="topbar"><div><div class="page-title">고객 목록</div><div class="page-sub">총 ${total}명</div></div></div>
   <div class="card">
     <div class="search-bar">
       <input class="si" placeholder="이름, 연락처, 아이 이름 검색..." value="${sq}"
@@ -733,7 +747,34 @@ async function tblHTML(){
     const sm=sf==='all'||!c.store||(c.store===sf);
     return m&&sm&&(tf==='all'||effType(c)===tf);
   });
-  if(!all.length)return'<div class="empty">🔍 검색 결과가 없습니다</div>';
+  if(!all.length) return '<div class="empty">🔍 검색 결과가 없습니다</div>';
+
+  // 모바일: 카드형 / 데스크탑: 테이블형
+  const isMobile = window.innerWidth < 768;
+  if(isMobile){
+    return all.map(c=>{
+      const gifts=getGifts(c), next=gifts.find(g=>!g.sent&&daysUntil(g.date)>=0);
+      const nd=next?daysUntil(next.date):null;
+      let ddCls='dd-green', ddTxt=nd===0?'오늘!':'D-'+nd;
+      if(nd===null) ddTxt='완료';
+      else if(nd<=3) ddCls='dd-red';
+      else if(nd<=7) ddCls='dd-gold';
+      return `<div class="cust-card" onclick="openDetail('${c.id}')">
+        <div class="cc-top">
+          <div class="cc-left">
+            <div class="cc-name">${c.name} <span style="font-weight:400;color:var(--mid)">· ${c.childName||'-'}</span></div>
+            <div class="cc-meta">${storeBadge(c.store||'all')} <span class="badge ${effType(c)==='pregnant'?'bp':'bn'}">${effType(c)==='pregnant'?'🤰 임산부':'👶 일반'}</span></div>
+          </div>
+          ${nd!==null?`<span class="dday ${ddCls}">${ddTxt}</span>`:''}
+        </div>
+        <div class="cc-row"><span class="cc-key">연락처</span><span class="cc-val">${c.phone||'-'}</span></div>
+        <div class="cc-row"><span class="cc-key">생일/예정일</span><span class="cc-val">${fmtDate(effDate(c))}</span></div>
+        ${next?`<div class="cc-row"><span class="cc-key">다음 선물</span><span class="cc-val" style="color:var(--sage-dark)">${next.label}</span></div>`:''}
+      </div>`;
+    }).join('');
+  }
+
+  // 데스크탑 테이블
   return `<div class="table-wrap"><table>
     <thead><tr><th>매장</th><th>유형</th><th>고객명</th><th>아이</th><th>연락처</th><th>생일/예정일</th><th>다음 발송</th><th></th></tr></thead>
     <tbody>${all.map(c=>{
@@ -742,7 +783,9 @@ async function tblHTML(){
       return `<tr>
         <td>${storeBadge(c.store||'all')}</td>
         <td><span class="badge ${effType(c)==='pregnant'?'bp':'bn'}">${effType(c)==='pregnant'?'🤰 임산부':'👶 일반'}</span></td>
-        <td><strong>${c.name}</strong></td><td>${c.childName||'-'}</td><td>${c.phone||'-'}</td>
+        <td><strong>${c.name}</strong></td>
+        <td>${c.childName||'-'}</td>
+        <td>${c.phone||'-'}</td>
         <td>${fmtDate(effDate(c))}</td>
         <td>${next?`<span class="badge bs">${nd===0?'오늘!':'D-'+nd}</span><br><span style="font-size:11px;color:var(--mid)">${next.label}</span>`:'<span style="font-size:11px;color:var(--light)">완료</span>'}</td>
         <td><button class="btn btn-secondary btn-sm" onclick="openDetail('${c.id}')">상세</button></td>
