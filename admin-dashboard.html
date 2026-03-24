@@ -581,8 +581,12 @@ function go(p){
 // 통계 카드 클릭 → 고객목록으로 이동하며 필터 적용
 function goListWithFilter(storeFilter, typeFilter, urgencyFilter){
   sq=''; sf=storeFilter||'all'; tf=typeFilter||'all';
-  window._urgencyFilter = urgencyFilter || null; // 10일/30일 필터
+  window._urgencyFilter = urgencyFilter || null;
   go('list');
+}
+// 목록 테이블 새로고침 헬퍼
+function refreshTbl(){
+  tblHTML().then(h=>{ const t=document.getElementById('tbl'); if(t) t.innerHTML=h; });
 }
 async function updateBadge(){const b=document.getElementById('alert-badge');if(b)b.textContent=(await getUpcoming(10)).length;}
 
@@ -832,16 +836,21 @@ async function renderList(){
   <div class="card">
     <div class="search-bar">
       <input class="si" placeholder="이름, 연락처, 아이 이름 검색..." value="${sq}"
-        oninput="sq=this.value;tblHTML().then(h=>document.getElementById('tbl').innerHTML=h)"/>
-      ${can('viewAll')?`<select class="fsel" onchange="sf=this.value;tblHTML().then(h=>document.getElementById('tbl').innerHTML=h)">
+        oninput="sq=this.value;refreshTbl()"/>
+      ${can('viewAll')?`<select class="fsel" onchange="sf=this.value;refreshTbl()">
         <option value="all" ${sf==='all'?'selected':''}>전체 매장</option>
         <option value="dobong" ${sf==='dobong'?'selected':''}>도봉점</option>
         <option value="yangju" ${sf==='yangju'?'selected':''}>양주점</option>
       </select>`:''}
-      <select class="fsel" onchange="tf=this.value;tblHTML().then(h=>document.getElementById('tbl').innerHTML=h)">
-        <option value="all" ${tf==='all'?'selected':''}>전체</option>
+      <select class="fsel" onchange="tf=this.value;refreshTbl()">
+        <option value="all" ${tf==='all'?'selected':''}>전체 유형</option>
         <option value="pregnant" ${tf==='pregnant'?'selected':''}>임산부</option>
         <option value="normal" ${tf==='normal'?'selected':''}>일반</option>
+      </select>
+      <select class="fsel" onchange="window._urgencyFilter=this.value||null;refreshTbl()">
+        <option value="" ${!window._urgencyFilter?'selected':''}>전체 일정</option>
+        <option value="10" ${window._urgencyFilter==='10'?'selected':''}>🚨 10일 내</option>
+        <option value="30" ${window._urgencyFilter==='30'?'selected':''}>🎁 30일 내</option>
       </select>
       <button class="btn btn-secondary btn-sm" onclick="exportCSV()">📥 엑셀</button>
     </div>
