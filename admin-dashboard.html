@@ -761,6 +761,7 @@ function renderApp(){
     </div>`;
   renderPage();
   updateBadge();
+  setupRealtime(); // 로그인 후 Realtime 구독 시작
 }
 async function renderPage(){
   const mc=document.getElementById('main');
@@ -1365,56 +1366,54 @@ setTimeout(checkNotifications,2000);
 setInterval(autoCleanup,3600000);
 
 // ===== SUPABASE REALTIME =====
+let _rtDebounce = null;
+let _rtChannels = [];
+
 function setupRealtime(){
-  // customers 테이블 변경 감지
-  _SB.channel('customers-changes')
+  // 기존 채널 정리
+  _rtChannels.forEach(ch => _SB.removeChannel(ch));
+  _rtChannels = [];
+
+  // customers 변경 감지 - 디바운스로 과도한 렌더링 방지
+  const custCh = _SB.channel('customers-changes')
     .on('postgres_changes',
       {event:'*', schema:'public', table:'customers'},
-      async (payload)=>{
-        console.log('customers changed:', payload.eventType);
-        await updateBadge();
-        // 현재 열린 페이지 새로고침
-        if(curPage==='dashboard'||curPage==='list'){
-          await renderPage();
-        }
+      ()=>{
+        clearTimeout(_rtDebounce);
+        _rtDebounce = setTimeout(async ()=>{
+          await updateBadge();
+          // 페이지 재렌더 없이 뱃지만 갱신 (깜빡임 방지)
+          // 사용자가 직접 새로고침(PTR)할 때 최신 데이터 로드
+        }, 1500);
       }
     )
     .subscribe();
+  _rtChannels.push(custCh);
 
-  // users 테이블 변경 감지 (신규 가입 등)
-  _SB.channel('users-changes')
+  // users 변경 감지 - INSERT만 (신규 가입)
+  const userCh = _SB.channel('users-changes')
     .on('postgres_changes',
       {event:'INSERT', schema:'public', table:'users'},
       async (payload)=>{
-        console.log('new user:', payload.new?.username);
         await updateBadge();
-        // 신규 가입 알림
+        const pu = payload.new;
+        if(!pu || pu.approved) return;
+        // 알림
         if(typeof Notification !== 'undefined' && Notification.permission==='granted'){
-          const pu = payload.new;
-          if(pu && !pu.approved){
-            const k = `pending_${pu.id}`;
-            if(!_notifShown.has(k)){
-              _notifShown.add(k);
-              localStorage.setItem('n_shown',JSON.stringify([..._notifShown]));
-              new Notification('👤 신규 직원 가입 대기 · BABY HAÜS',{
-                body:`@${pu.username} (${STORE_LABEL[pu.store]||pu.store}) 승인 대기 중입니다`
-              });
-            }
+          const k = `pending_${pu.id}`;
+          if(!_notifShown.has(k)){
+            _notifShown.add(k);
+            localStorage.setItem('n_shown',JSON.stringify([..._notifShown]));
+            new Notification('👤 신규 직원 가입 대기 · BABY HAÜS',{
+              body:`@${pu.username} (${STORE_LABEL[pu.store]||pu.store}) 승인 대기 중입니다`
+            });
           }
         }
-        if(curPage==='staff') await renderPage();
-      }
-    )
-    .on('postgres_changes',
-      {event:'UPDATE', schema:'public', table:'users'},
-      async ()=>{
-        await updateBadge();
-        if(curPage==='staff') await renderPage();
       }
     )
     .subscribe();
+  _rtChannels.push(userCh);
 }
-setupRealtime();
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 // ===== PULL TO REFRESH =====
