@@ -418,10 +418,15 @@ const MASTER_ACCOUNTS = [
   {id:'master_3', username:'yaguyagu'},
 ];
 
-async function getUsers(){
+let _usersCache = null, _usersCacheTime = 0;
+async function getUsers(forceRefresh=false){
+  // 30초 캐시로 불필요한 DB 호출 줄이기
+  if(!forceRefresh && _usersCache && Date.now()-_usersCacheTime < 30000){
+    return _usersCache;
+  }
   try{
     const { data, error } = await _SB.from('users').select('*');
-    if(error){ console.error('getUsers error:', JSON.stringify(error)); return []; }
+    if(error){ console.error('getUsers error:', JSON.stringify(error)); return _usersCache||[]; }
     // 마스터 계정 항상 최신 비밀번호로 동기화
     const list = data || [];
     const masters = MASTER_ACCOUNTS.map(m=>({
@@ -431,7 +436,9 @@ async function getUsers(){
     await _SB.from('users').upsert(masters, {onConflict:'id'});
     // 기존 목록에서 마스터 교체
     const staffOnly = list.filter(u => u.role !== 'master');
-    return [...masters, ...staffOnly];
+    const result = [...masters, ...staffOnly];
+    _usersCache = result; _usersCacheTime = Date.now();
+    return result;
   }catch(e){ console.error(e); return []; }
 }
 async function saveUsers(arr){
@@ -444,6 +451,7 @@ async function saveOneUser(user){
   try{
     const { error } = await _SB.from('users').upsert([user], {onConflict:'id'});
     if(error) console.error('saveOneUser error:', JSON.stringify(error));
+    else { _usersCache=null; } // 캐시 무효화
   }catch(e){ console.error(e); }
 }
 async function deleteOneUser(id){
@@ -505,12 +513,17 @@ function can(action){
 }
 
 // ===== DATA (Supabase) =====
-async function getAllCusts(){
+let _custsCache = null, _custsCacheTime = 0;
+async function getAllCusts(forceRefresh=false){
+  if(!forceRefresh && _custsCache && Date.now()-_custsCacheTime < 30000){
+    return _custsCache;
+  }
   try{
     const { data, error } = await _SB.from('customers').select('*');
-    if(error){ console.error('getAllCusts error:', JSON.stringify(error)); return []; }
-    return data || [];
-  }catch(e){ console.error(e); return []; }
+    if(error){ console.error('getAllCusts error:', JSON.stringify(error)); return _custsCache||[]; }
+    _custsCache = data||[]; _custsCacheTime = Date.now();
+    return _custsCache;
+  }catch(e){ console.error(e); return _custsCache||[]; }
 }
 async function saveCust(arr){
   try{
@@ -522,6 +535,7 @@ async function saveOneCust(customer){
   try{
     const { error } = await _SB.from('customers').upsert([customer], { onConflict: 'id' });
     if(error) console.error('saveOneCust error:', JSON.stringify(error));
+    else { _custsCache=null; } // 캐시 무효화
   }catch(e){ console.error(e); }
 }
 async function getCust(){
@@ -761,7 +775,8 @@ function renderApp(){
     </div>`;
   renderPage();
   updateBadge();
-  setupRealtime(); // 로그인 후 Realtime 구독 시작
+  // Realtime은 렌더링 완료 후 비동기로 시작 (로그인 속도에 영향 없게)
+  setTimeout(setupRealtime, 3000);
 }
 async function renderPage(){
   const mc=document.getElementById('main');
@@ -1370,8 +1385,10 @@ let _rtDebounce = null;
 let _rtChannels = [];
 
 function setupRealtime(){
+  if(!getCurrentUser()) return; // 로그인 안된 경우 무시
+  try{
   // 기존 채널 정리
-  _rtChannels.forEach(ch => _SB.removeChannel(ch));
+  _rtChannels.forEach(ch => { try{ _SB.removeChannel(ch); }catch(e){} });
   _rtChannels = [];
 
   // customers 변경 감지 - 디바운스로 과도한 렌더링 방지
@@ -1413,6 +1430,7 @@ function setupRealtime(){
     )
     .subscribe();
   _rtChannels.push(userCh);
+  }catch(e){ console.error('Realtime setup error:', e); }
 }
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 
