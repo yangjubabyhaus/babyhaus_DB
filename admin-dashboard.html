@@ -120,7 +120,7 @@ body{font-family:'Gowun Dodum',sans-serif;background:var(--cream);color:var(--da
   background:var(--white);cursor:pointer;font-size:13px;font-family:'Gowun Dodum',sans-serif;
   color:var(--mid);transition:all .18s;display:flex;align-items:center;gap:6px;}
 .notif-btn.on{background:var(--sage-light);border-color:var(--sage);color:var(--sage-dark);cursor:default;}
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+.stat-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-bottom:22px;}
 .stat-card{background:var(--white);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);}
 .sc-icon{font-size:24px;margin-bottom:8px;}
 .sc-num{font-family:'Noto Serif KR',serif;font-size:28px;font-weight:700;}
@@ -324,6 +324,19 @@ tr:hover td{background:var(--cream);}
   margin-right:8px;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== CLICKABLE STAT CARDS ===== */
+.stat-clickable{cursor:pointer;transition:transform .18s, box-shadow .18s;}
+.stat-clickable:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(45,42,38,.13);}
+.stat-wide{grid-column:span 1;}
+.sc-arrow{font-size:11px;color:var(--light);margin-top:6px;}
+.stat-clickable:hover .sc-arrow{color:var(--sage);}
+.sc-warn .sc-arrow{color:rgba(232,133,106,.6);}
+.sc-gold .sc-arrow{color:rgba(201,168,76,.6);}
+
+@media(max-width:768px){
+  .stat-wide{grid-column:1 / -1;}
+}
 </style>
 </head>
 <body>
@@ -557,12 +570,19 @@ function getNavItems(){
 }
 function go(p){
   curPage=p;
+  if(p!=='list') window._urgencyFilter=null; // 목록 아닌 다른 탭 이동 시 필터 초기화
   getNavItems().forEach(item=>{
     const s=document.getElementById('nav-'+item.id), b=document.getElementById('bnav-'+item.id);
     if(s)s.className=item.id===p?'ni active':'ni';
     if(b)b.className=item.id===p?'bni active':'bni';
   });
   renderPage();
+}
+// 통계 카드 클릭 → 고객목록으로 이동하며 필터 적용
+function goListWithFilter(storeFilter, typeFilter, urgencyFilter){
+  sq=''; sf=storeFilter||'all'; tf=typeFilter||'all';
+  window._urgencyFilter = urgencyFilter || null; // 10일/30일 필터
+  go('list');
 }
 async function updateBadge(){const b=document.getElementById('alert-badge');if(b)b.textContent=(await getUpcoming(10)).length;}
 
@@ -764,10 +784,24 @@ async function renderDashboard(){
   </div>
   ${banner}
   <div class="stat-grid">
-    <div class="stat-card"><div class="sc-icon">👥</div><div class="sc-num">${custs.length}</div><div class="sc-lbl">담당 고객${can('viewAll')?'':`(${STORE_LABEL[u.store]})`}</div></div>
-    <div class="stat-card"><div class="sc-icon">🤰</div><div class="sc-num">${custs.filter(c=>effType(c)==='pregnant').length}</div><div class="sc-lbl">임산부 고객</div></div>
-    <div class="stat-card sc-warn"><div class="sc-icon">🚨</div><div class="sc-num">${u10.length}</div><div class="sc-lbl">10일 내 발송</div></div>
-    <div class="stat-card sc-gold"><div class="sc-icon">🎁</div><div class="sc-num">${u30.length}</div><div class="sc-lbl">30일 내 발송</div></div>
+    <div class="stat-card stat-wide stat-clickable" onclick="goListWithFilter('${can('viewAll')?'all':u.store}','all',null)">
+      <div class="sc-icon">👥</div>
+      <div class="sc-num">${custs.length}</div>
+      <div class="sc-lbl">담당 고객${can('viewAll')?'':`&nbsp;·&nbsp;${STORE_LABEL[u.store]}`}</div>
+      <div class="sc-arrow">목록 보기 →</div>
+    </div>
+    <div class="stat-card sc-warn stat-clickable" onclick="goListWithFilter('all','all','10')">
+      <div class="sc-icon">🚨</div>
+      <div class="sc-num">${u10.length}</div>
+      <div class="sc-lbl">10일 내 발송</div>
+      <div class="sc-arrow">보기 →</div>
+    </div>
+    <div class="stat-card sc-gold stat-clickable" onclick="goListWithFilter('all','all','30')">
+      <div class="sc-icon">🎁</div>
+      <div class="sc-num">${u30.length}</div>
+      <div class="sc-lbl">30일 내 발송</div>
+      <div class="sc-arrow">보기 →</div>
+    </div>
   </div>
   <div class="alert-grid">
     <div class="card red-top">
@@ -785,8 +819,16 @@ async function renderDashboard(){
 async function renderList(){
   const u=getCurrentUser(), custs=await getCust();
   const total=custs.length;
+  const urgency = window._urgencyFilter;
+  const urgencyLabel = urgency==='10' ? '🚨 10일 내 발송 예정' : urgency==='30' ? '🎁 30일 내 발송 예정' : null;
   return `
-  <div class="topbar"><div><div class="page-title">고객 목록</div><div class="page-sub">총 ${total}명</div></div></div>
+  <div class="topbar">
+    <div>
+      <div class="page-title">고객 목록</div>
+      <div class="page-sub">총 ${total}명${urgencyLabel?` &nbsp;·&nbsp; <span style="color:var(--coral);font-weight:600">${urgencyLabel}</span>`:''}</div>
+    </div>
+    ${urgencyLabel?`<button class="btn btn-secondary btn-sm" onclick="window._urgencyFilter=null;renderPage()">✕ 필터 해제</button>`:''}
+  </div>
   <div class="card">
     <div class="search-bar">
       <input class="si" placeholder="이름, 연락처, 아이 이름 검색..." value="${sq}"
@@ -807,11 +849,19 @@ async function renderList(){
   </div>`;
 }
 async function tblHTML(){
-  const all=(await getCust()).filter(c=>{
+  const urgency = window._urgencyFilter || null;
+  const allCusts = await getCust();
+  const all = allCusts.filter(c=>{
     const q=sq.toLowerCase();
     const m=!q||c.name.includes(q)||c.phone.includes(q)||(c.childName||'').includes(q);
     const sm=sf==='all'||!c.store||(c.store===sf);
-    return m&&sm&&(tf==='all'||effType(c)===tf);
+    const tm=tf==='all'||effType(c)===tf;
+    if(!urgency) return m&&sm&&tm;
+    // 긴급 필터: 해당 일수 내 발송 예정인 고객만
+    const days = parseInt(urgency);
+    const gifts = getGifts(c);
+    const hasUpcoming = gifts.some(g=>!g.sent && daysUntil(g.date)!==null && daysUntil(g.date)>=0 && daysUntil(g.date)<=days);
+    return m&&sm&&tm&&hasUpcoming;
   });
   if(!all.length) return '<div class="empty">🔍 검색 결과가 없습니다</div>';
 
