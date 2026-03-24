@@ -257,6 +257,10 @@ tr:hover td{background:var(--cream);}
 }
 @media(max-width:480px){.stat-grid{grid-template-columns:1fr 1fr;}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const _SB = supabase.createClient('https://bbitqqtibpkzoijgvylo.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJiaXRxcXRpYnBrem9pamd2eWxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzYzOTQsImV4cCI6MjA4OTkxMjM5NH0.MXoSMJCv7KmCt57KHVCOTRBIwbr8r-f8VBKlHE7v6pc');
+</script>
 </head>
 <body>
 
@@ -393,12 +397,29 @@ function can(action){
   return (p[action]||[]).includes(u.role);
 }
 
-// ===== DATA =====
-function getAllCusts(){ try{return JSON.parse(localStorage.getItem('baby_store_customers')||'[]');}catch{return[];} }
-function saveCust(arr){ localStorage.setItem('baby_store_customers',JSON.stringify(arr)); }
-function getCust(){
-  const u=getCurrentUser(); if(!u)return[];
-  const all=getAllCusts().filter(c=>!c.deleted);
+// ===== DATA (Supabase) =====
+async function getAllCusts(){
+  try{
+    const { data, error } = await _SB.from('customers').select('*');
+    if(error){ console.error('getAllCusts:', error); return []; }
+    return data || [];
+  }catch(e){ console.error(e); return []; }
+}
+async function saveCust(arr){
+  try{
+    const { error } = await _SB.from('customers').upsert(arr, { onConflict: 'id' });
+    if(error) console.error('saveCust:', error);
+  }catch(e){ console.error(e); }
+}
+async function saveOneCust(customer){
+  try{
+    const { error } = await _SB.from('customers').upsert([customer], { onConflict: 'id' });
+    if(error) console.error('saveOneCust:', error);
+  }catch(e){ console.error(e); }
+}
+async function getCust(){
+  const u=getCurrentUser(); if(!u) return [];
+  const all=(await getAllCusts()).filter(c=>!c.deleted);
   if(can('viewAll')) return all;
   return all.filter(c=>c.store===u.store);
 }
@@ -410,17 +431,17 @@ function buildGifts(c){
   return g;
 }
 function getGifts(c){ return(c.gifts&&c.gifts.length)?c.gifts:buildGifts(c).map(g=>({...g,sent:false})); }
-function getUpcoming(days){
+async function getUpcoming(days){
   const r=[];
-  getCust().forEach(c=>getGifts(c).forEach(g=>{const d=daysUntil(g.date);if(d!==null&&d>=0&&d<=days&&!g.sent)r.push({c,g,d});}));
+  (await getCust()).forEach(c=>getGifts(c).forEach(g=>{const d=daysUntil(g.date);if(d!==null&&d>=0&&d<=days&&!g.sent)r.push({c,g,d});}));
   return r.sort((a,b)=>a.d-b.d);
 }
 
 // ===== NOTIFICATIONS =====
 let _notifShown=new Set(JSON.parse(sessionStorage.getItem('n_shown')||'[]'));
-function checkNotifications(){
+async function checkNotifications(){
   if(Notification.permission!=='granted')return;
-  getUpcoming(10).forEach(({c,g,d})=>{
+  (await getUpcoming(10)).forEach(({c,g,d})=>{
     const k=`${c.id}_${g.date}`;
     if(!_notifShown.has(k)){_notifShown.add(k);sessionStorage.setItem('n_shown',JSON.stringify([..._notifShown]));
       new Notification('🎁 선물 발송 알림 · 아이사랑',{body:`${c.name} · ${c.childName} · ${g.label}\n${d===0?'오늘 발송!':'D-'+d+' 예정'}`});}
@@ -450,7 +471,7 @@ function go(p){
   });
   renderPage();
 }
-function updateBadge(){const b=document.getElementById('alert-badge');if(b)b.textContent=getUpcoming(10).length;}
+async function updateBadge(){const b=document.getElementById('alert-badge');if(b)b.textContent=(await getUpcoming(10)).length;}
 
 // ===== RENDER DISPATCHER =====
 function renderAuthOrApp(){
@@ -584,19 +605,23 @@ function renderApp(){
   renderPage();
   updateBadge();
 }
-function renderPage(){
+async function renderPage(){
   const mc=document.getElementById('main');
-  if(curPage==='dashboard') mc.innerHTML=renderDashboard();
-  if(curPage==='list') mc.innerHTML=renderList();
-
+  // 로딩 인디케이터
+  if(curPage!=='staff') mc.innerHTML='<div style="text-align:center;padding:60px;color:var(--light);font-size:14px">불러오는 중...</div>';
+  if(curPage==='dashboard'){ mc.innerHTML=await renderDashboard(); }
+  if(curPage==='list'){
+    mc.innerHTML=await renderList();
+    tblHTML().then(h=>{ const t=document.getElementById('tbl'); if(t) t.innerHTML=h; });
+  }
   if(curPage==='staff') mc.innerHTML=renderStaff();
   updateBadge();
 }
 
 // ===== DASHBOARD =====
-function renderDashboard(){
-  const u=getCurrentUser(), custs=getCust();
-  const u10=getUpcoming(10),u30=getUpcoming(30);
+async function renderDashboard(){
+  const u=getCurrentUser(), custs=await getCust();
+  const u10=await getUpcoming(10),u30=await getUpcoming(30);
   const perm=Notification.permission;
   function aiItem({c,g,d}){
     let cls='dd-green',txt='D-'+d;
@@ -647,24 +672,24 @@ function renderList(){
   <div class="card">
     <div class="search-bar">
       <input class="si" placeholder="이름, 연락처, 아이 이름 검색..." value="${sq}"
-        oninput="sq=this.value;document.getElementById('tbl').innerHTML=tblHTML()"/>
-      ${can('viewAll')?`<select class="fsel" onchange="sf=this.value;document.getElementById('tbl').innerHTML=tblHTML()">
+        oninput="sq=this.value;tblHTML().then(h=>document.getElementById('tbl').innerHTML=h)"/>
+      ${can('viewAll')?`<select class="fsel" onchange="sf=this.value;tblHTML().then(h=>document.getElementById('tbl').innerHTML=h)">
         <option value="all" ${sf==='all'?'selected':''}>전체 매장</option>
         <option value="dobong" ${sf==='dobong'?'selected':''}>도봉점</option>
         <option value="yangju" ${sf==='yangju'?'selected':''}>양주점</option>
       </select>`:''}
-      <select class="fsel" onchange="tf=this.value;document.getElementById('tbl').innerHTML=tblHTML()">
+      <select class="fsel" onchange="tf=this.value;tblHTML().then(h=>document.getElementById('tbl').innerHTML=h)">
         <option value="all" ${tf==='all'?'selected':''}>전체</option>
         <option value="pregnant" ${tf==='pregnant'?'selected':''}>임산부</option>
         <option value="normal" ${tf==='normal'?'selected':''}>일반</option>
       </select>
       <button class="btn btn-secondary btn-sm" onclick="exportCSV()">📥 엑셀</button>
     </div>
-    <div id="tbl">${tblHTML()}</div>
+    <div id="tbl"><div style='text-align:center;padding:20px;color:var(--light)'>불러오는 중...</div></div>
   </div>`;
 }
-function tblHTML(){
-  const all=getCust().filter(c=>{
+async function tblHTML(){
+  const all=(await getCust()).filter(c=>{
     const q=sq.toLowerCase();
     const m=!q||c.name.includes(q)||c.phone.includes(q)||(c.childName||'').includes(q);
     const sm=sf==='all'||!c.store||(c.store===sf);
@@ -688,8 +713,8 @@ function tblHTML(){
 }
 
 // ===== DETAIL =====
-function openDetail(id){
-  const all=getAllCusts(), c=all.find(x=>x.id===id); if(!c||c.deleted)return;
+async function openDetail(id){
+  const all=await getAllCusts(), c=all.find(x=>x.id===id); if(!c||c.deleted)return;
   const gifts=getGifts(c), isPreg=c.type==='pregnant';
   function gStep(g){
     const d=daysUntil(g.date);let cls='',stat='';
@@ -731,11 +756,11 @@ function openDetail(id){
       <button class="btn btn-secondary" onclick="document.getElementById('overlay').style.display='none'">닫기</button>
     </div>`);
 }
-function markSent(cid,gDate){
-  const all=getAllCusts(),c=all.find(x=>x.id===cid); if(!c)return;
+async function markSent(cid,gDate){
+  const all=await getAllCusts(),c=all.find(x=>x.id===cid); if(!c)return;
   const gifts=getGifts(c),g=gifts.find(x=>x.date===gDate);
   if(g){g.sent=true;c.gifts=gifts;}
-  saveCust(all);showToast('발송 완료 처리됐습니다','✅');openDetail(cid);updateBadge();
+  await saveOneCust(c);showToast('발송 완료 처리됐습니다','✅');openDetail(cid);updateBadge();
 }
 // ===== PASSWORD CHANGE =====
 function showChangePwd(){
@@ -807,10 +832,10 @@ function confirmDelete(id,name){
       <button class="btn btn-coral" onclick="delCust('${id}')">삭제 확인</button>
     </div>`);
 }
-function delCust(id){
-  const all=getAllCusts(),c=all.find(x=>x.id===id); if(!c)return;
+async function delCust(id){
+  const all=await getAllCusts(),c=all.find(x=>x.id===id); if(!c)return;
   c.deleted=true;c.deletedAt=today();
-  saveCust(all);document.getElementById('overlay').style.display='none';
+  await saveOneCust(c);document.getElementById('overlay').style.display='none';
   showToast('고객 정보가 숨김 처리됐습니다','🗑️');renderPage();
 }
 
@@ -971,8 +996,8 @@ function doDeactivate(uid){
 
 
 // ===== CSV =====
-function exportCSV(){
-  const custs=getCust();
+async function exportCSV(){
+  const custs=await getCust();
   const hdr=['매장','고객유형','고객명','연락처','주소','아이이름','출산예정일/생년월일','실제출산일','등록일','인증코드','코드상태','다음선물일','다음선물명'];
   const rows=custs.map(c=>{
     const gifts=getGifts(c),next=gifts.find(g=>!g.sent&&daysUntil(g.date)>=0);
@@ -988,8 +1013,8 @@ function exportCSV(){
 }
 
 // ===== AUTO CLEANUP (72mo) =====
-function autoCleanup(){
-  const all=getAllCusts();const now=new Date();now.setHours(0,0,0,0);const before=all.length;
+async function autoCleanup(){
+  const all=await getAllCusts();const now=new Date();now.setHours(0,0,0,0);const before=all.length;
   const filtered=all.filter(c=>{
     const base=c.type==='pregnant'?(c.actualBirthDate||c.dueDate):c.birthDate;
     if(!base)return!c.deleted;
@@ -1002,7 +1027,7 @@ function autoCleanup(){
 
 // ===== INIT =====
 getUsers(); // seed masters if first run
-autoCleanup();
+autoCleanup();  // async, runs in background
 
 // 저장된 로그인 정보로 자동 로그인 시도
 (function autoLogin(){
