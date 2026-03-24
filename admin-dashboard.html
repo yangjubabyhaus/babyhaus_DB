@@ -637,7 +637,10 @@ function renderApp(){
   document.getElementById('bnav-row').innerHTML=items.map(i=>`
     <div class="bni ${i.id===curPage?'active':''}" onclick="go('${i.id}')" id="bnav-${i.id}">
       <span class="bi">${i.icon}</span><span class="bl">${i.label}</span>
-    </div>`).join('');
+    </div>`).join('')
+    + `<div class="bni" onclick="showMobileMenu()">
+      <span class="bi">⚙️</span><span class="bl">더보기</span>
+    </div>`;
   renderPage();
   updateBadge();
 }
@@ -900,6 +903,27 @@ async function doChangePwd(){
   }
   document.getElementById('overlay').style.display='none';
   showToast('비밀번호가 변경됐습니다','🔑');
+}
+
+function showMobileMenu(){
+  const u = getCurrentUser();
+  openModal(`
+    <div class="modal-title">⚙️ 더보기</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+      <div style="padding:12px 0;border-bottom:1px solid var(--cream2);font-size:13px;color:var(--mid)">
+        ${roleBadge(u.role)} ${storeBadge(u.store)}<br>
+        <span style="font-weight:600;color:var(--dark);margin-top:4px;display:block">@${u.username}</span>
+      </div>
+      <button class="btn btn-secondary" style="width:100%;padding:13px;font-size:14px;text-align:left"
+        onclick="document.getElementById('overlay').style.display='none';showChangePwd()">
+        🔑 비밀번호 변경
+      </button>
+      <button class="btn" style="width:100%;padding:13px;font-size:14px;text-align:left;background:var(--coral-light);color:var(--coral)"
+        onclick="logout()">
+        🚪 로그아웃
+      </button>
+    </div>
+  `);
 }
 
 function copyCode(code){
