@@ -117,6 +117,10 @@ body{font-family:'Gowun Dodum',sans-serif;background:linear-gradient(145deg,#fdf
 
 .footer-note{text-align:center;font-size:12px;color:var(--light);margin-top:18px;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const _SB = supabase.createClient('https://bbitqqtibpkzoijgvylo.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJiaXRxcXRpYnBrem9pamd2eWxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzYzOTQsImV4cCI6MjA4OTkxMjM5NH0.MXoSMJCv7KmCt57KHVCOTRBIwbr8r-f8VBKlHE7v6pc');
+</script>
 </head>
 <body>
 <div class="container">
@@ -166,10 +170,27 @@ function buildGifts(type, base){
   return g;
 }
 
-// ===== STORAGE =====
-// 🔌 SUPABASE 연동 시 아래 함수들을 교체하세요
-function getStorage(){ try{ return JSON.parse(localStorage.getItem('baby_store_customers')||'[]'); }catch{ return []; } }
-function saveStorage(arr){ localStorage.setItem('baby_store_customers', JSON.stringify(arr)); }
+// ===== STORAGE (Supabase) =====
+async function getStorage(){
+  try{
+    const { data, error } = await _SB.from('customers').select('*');
+    if(error){ console.error('getStorage error:', error); return []; }
+    return data || [];
+  }catch(e){ console.error(e); return []; }
+}
+async function saveStorage(arr){
+  // 개별 upsert 처리
+  try{
+    const { error } = await _SB.from('customers').upsert(arr, { onConflict: 'id' });
+    if(error) console.error('saveStorage error:', error);
+  }catch(e){ console.error(e); }
+}
+async function saveOneCustomer(customer){
+  try{
+    const { error } = await _SB.from('customers').upsert([customer], { onConflict: 'id' });
+    if(error) console.error('saveOneCustomer error:', error);
+  }catch(e){ console.error(e); }
+}
 
 // ===== MODE SWITCH =====
 function switchMode(m){
@@ -322,7 +343,7 @@ function addrSearch(){
     }
   }
 }
-function submit(){
+async function submit(){
   const name = document.getElementById('f-name').value.trim();
   const phone = document.getElementById('f-phone').value.trim();
   const addr = document.getElementById('f-addr').value.trim();
@@ -342,9 +363,7 @@ function submit(){
     ...(ip ? {dueDate:date, actualBirthDate:null, birthDateModified:false, verificationCode:code} : {birthDate:date}),
     registeredAt: new Date().toISOString().split('T')[0], gifts
   };
-  // 🔌 SUPABASE 연동 포인트:
-  // const {data, error} = await supabase.from('customers').insert([customer])
-  const all = getStorage(); all.push(customer); saveStorage(all);
+  await saveOneCustomer(customer);
   fd = {...fd, name, phone, addr, addr2, childName, date, agreed:true, saved:customer};
   goStep(3);
 }
@@ -466,9 +485,9 @@ function r_correct_confirm(){
   </div>`;
 }
 
-function doCorrectFinal(){
+async function doCorrectFinal(){
   const {c, newDate} = correctCustomer;
-  const all = getStorage();
+  const all = await getStorage();
   const target = all.find(x=>x.id===c.id);
   if(!target){ alert('오류가 발생했습니다. 다시 시도해주세요.'); return; }
 
@@ -488,9 +507,7 @@ function doCorrectFinal(){
   }
   target.gifts = gifts;
 
-  // 🔌 SUPABASE 연동 포인트:
-  // await supabase.from('customers').update({actualBirthDate:newDate, birthDateModified:true, gifts}).eq('id', c.id)
-  saveStorage(all);
+  await saveOneCustomer(target);
   correctCustomer = {...correctCustomer, updated: target};
   correctState = 'done';
   r_correct_done();
