@@ -480,7 +480,7 @@ async function getUpcoming(days){
 // ===== NOTIFICATIONS =====
 let _notifShown=new Set(JSON.parse(sessionStorage.getItem('n_shown')||'[]'));
 async function checkNotifications(){
-  if(Notification.permission!=='granted')return;
+  if(typeof Notification === 'undefined' || Notification.permission!=='granted') return;
   (await getUpcoming(10)).forEach(({c,g,d})=>{
     const k=`${c.id}_${g.date}`;
     if(!_notifShown.has(k)){_notifShown.add(k);sessionStorage.setItem('n_shown',JSON.stringify([..._notifShown]));
@@ -546,20 +546,9 @@ function loginHTML(){
     <button class="auth-btn" onclick="doLoginBtn()">로그인</button>
     <div class="auth-link">직원 계정이 없으신가요? <a onclick="renderAuth('register')">회원가입 →</a></div>
 
-    <div style="margin-top:12px;text-align:center">
-      <a onclick="devReset()" style="font-size:11px;color:rgba(255,255,255,.2);cursor:pointer">🔄 테스트 데이터 초기화</a>
-    </div>`;
+`;
 }
-async function devReset(){
-  if(!confirm('⚠️ 모든 사용자·고객 데이터를 초기화합니다.\n(마스터 계정만 남습니다)\n테스트 목적으로만 사용하세요.')) return;
-  // Supabase 데이터 삭제
-  await _SB.from('customers').delete().neq('id','__none__');
-  await _SB.from('users').delete().not('role','eq','master');
-  // 로컬 캐시 삭제
-  ['bss_saved_creds','n_shown'].forEach(k=>localStorage.removeItem(k));
-  sessionStorage.clear();
-  location.reload();
-}
+
 function getSavedCreds(){
   try{ return JSON.parse(localStorage.getItem('bss_saved_creds')||'{}'); }catch{ return {}; }
 }
@@ -694,7 +683,7 @@ async function renderDashboard(){
   }
   const custs=await getCust();
   const u10=await getUpcoming(10),u30=await getUpcoming(30);
-  const perm=Notification.permission;
+  const perm=typeof Notification !== 'undefined' ? Notification.permission : 'denied';
   function aiItem({c,g,d}){
     let cls='dd-green',txt='D-'+d;
     if(d===0){cls='dd-red';txt='오늘!';}else if(d<=3)cls='dd-red';else if(d<=7)cls='dd-gold';
@@ -708,14 +697,14 @@ async function renderDashboard(){
       <span class="dday ${cls}">${txt}</span>
     </div>`;
   }
-  const banner=perm==='default'?`<div class="notif-banner">
+  const banner=(typeof Notification !== 'undefined' && perm==='default')?`<div class="notif-banner">
     <span>🔔 알림을 허용하면 10일 내 발송 예정 고객을 즉시 알려드려요</span>
     <button onclick="requestNotif()">알림 허용</button></div>`:'' ;
   return `
   <div class="topbar">
     <div><div class="page-title">대시보드</div>
     <div class="page-sub">${new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'})} · ${ROLE_LABEL[u.role]} @${u.username}</div></div>
-    ${perm==='granted'?`<div class="notif-btn on">🔔 알림 켜짐</div>`:`<button class="notif-btn" onclick="requestNotif()">🔔 알림 허용</button>`}
+    ${typeof Notification !== 'undefined' ? (perm==='granted' ? `<div class="notif-btn on">🔔 알림 켜짐</div>` : `<button class="notif-btn" onclick="requestNotif()">🔔 알림 허용</button>`) : ''}
   </div>
   ${banner}
   <div class="stat-grid">
